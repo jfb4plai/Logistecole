@@ -284,6 +284,11 @@ create policy logi_emprunteurs_ecrire on logi_emprunteurs for all to authenticat
   with check (logi_a_role(org_id, array['admin', 'gestionnaire']));
 
 -- ── Grants Data API (anon : aucun accès) ───────────────────────────────
+-- Supabase accorde par défaut tous les droits aux nouvelles tables : on repart de zéro
+-- puis on accorde uniquement ce qui est voulu (RLS filtre ensuite les lignes).
+revoke all on logi_organisations, logi_membres, logi_emplacements, logi_categories,
+              logi_objets, logi_historique, logi_emprunteurs from anon, authenticated, service_role;
+
 grant select on logi_organisations to authenticated;
 grant select on logi_organisations to service_role;
 
