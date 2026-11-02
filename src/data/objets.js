@@ -1,7 +1,9 @@
 import { supabase } from '../lib/supabase.js';
 
 const COLONNES =
-  'id, org_id, nom, code, etat, notes, photo_path, categorie_id, emplacement_id, cree_le, maj_le, logi_categories(nom), logi_emplacements(nom)';
+  'id, org_id, nom, code, etat, notes, photo_path, categorie_id, emplacement_id, cree_le, maj_le, '
+  + 'date_achat, fournisseur, prix_achat, garantie_fin, numero_serie, facture_url, facture_photo_path, financement, liens, '
+  + 'parent_id, consommable, quantite, seuil_min, logi_categories(nom), logi_emplacements(nom)';
 const BUCKET = 'logi-photos';
 
 function verifier(error) {

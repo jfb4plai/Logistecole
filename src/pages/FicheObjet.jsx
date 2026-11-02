@@ -1,29 +1,42 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../lib/auth.jsx';
 import { useOrg } from '../lib/org.jsx';
 import {
   getObjetParCode, modifierObjet, supprimerObjet, listerHistorique, ajouterEntreeHistorique, urlsPhotos,
 } from '../data/objets.js';
-import { useEmplacements } from '../data/hooks.js';
+import { useEmplacements, useObjets, usePrets, useReservations, useEmprunteurs } from '../data/hooks.js';
 import { libelleEvenement } from '../domain/historique.js';
 import { normaliserCode, formaterCode } from '../domain/codes.js';
 import { ETATS } from '../domain/etats.js';
-import { peutEcrire, estAdmin } from '../domain/permissions.js';
+import { actionsFiche } from '../domain/actions.js';
+import { pretOuvertDe } from '../domain/kit.js';
+import { estAdmin, peutEcrire } from '../domain/permissions.js';
 import { messageErreur } from '../lib/erreurs.js';
 import EtatBadge from '../components/EtatBadge.jsx';
 import ChampGuide from '../components/ChampGuide.jsx';
+import BlocPret from '../components/fiche/BlocPret.jsx';
+import BlocReservations from '../components/fiche/BlocReservations.jsx';
+import BlocPanne from '../components/fiche/BlocPanne.jsx';
+import BlocStock from '../components/fiche/BlocStock.jsx';
+import BlocAchat from '../components/fiche/BlocAchat.jsx';
+import BlocKit from '../components/fiche/BlocKit.jsx';
+import BlocNfc from '../components/fiche/BlocNfc.jsx';
 
 export default function FicheObjet() {
   const { code: codeUrl } = useParams();
   const code = normaliserCode(codeUrl);
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { session } = useAuth();
   const { memberships, orgId, choisir } = useOrg();
+  const userId = session?.user?.id;
 
   const objetQ = useQuery({ queryKey: ['objet', code], enabled: !!code, queryFn: () => getObjetParCode(code) });
   const objet = objetQ.data;
-  const role = memberships.find((m) => m.orgId === objet?.org_id)?.role ?? null;
+  const objOrg = objet?.org_id;
+  const role = memberships.find((m) => m.orgId === objOrg)?.role ?? null;
 
   // Un QR d'une autre de mes organisations : on bascule dessus.
   useEffect(() => {
@@ -31,7 +44,11 @@ export default function FicheObjet() {
   }, [objet, orgId, choisir]);
 
   const histQ = useQuery({ queryKey: ['historique', objet?.id], enabled: !!objet, queryFn: () => listerHistorique(objet.id) });
-  const emps = useEmplacements(objet?.org_id).data ?? [];
+  const emps = useEmplacements(objOrg).data ?? [];
+  const objets = useObjets(objOrg).data ?? [];
+  const prets = usePrets(objOrg).data ?? [];
+  const reservations = useReservations(objOrg).data ?? [];
+  const emprunteurs = useEmprunteurs(objOrg, peutEcrire(role)).data ?? [];
   const photoQ = useQuery({
     queryKey: ['photo', objet?.photo_path], enabled: !!objet?.photo_path,
     queryFn: async () => (await urlsPhotos([objet.photo_path]))[objet.photo_path],
@@ -42,14 +59,19 @@ export default function FicheObjet() {
   const [correction, setCorrection] = useState('');
   const [erreur, setErreur] = useState('');
 
-  const rafraichir = () => {
-    qc.invalidateQueries({ queryKey: ['objet', code] });
-    qc.invalidateQueries({ queryKey: ['historique', objet?.id] });
-    qc.invalidateQueries({ queryKey: ['objets', objet?.org_id] });
+  const rafraichir = async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['objet'] }),
+      qc.invalidateQueries({ queryKey: ['historique', objet?.id] }),
+      qc.invalidateQueries({ queryKey: ['objets', objOrg] }),
+      qc.invalidateQueries({ queryKey: ['prets', objOrg] }),
+      qc.invalidateQueries({ queryKey: ['reservations', objOrg] }),
+      qc.invalidateQueries({ queryKey: ['emprunteurs', objOrg] }),
+    ]);
   };
   const run = (fn) => async () => {
     setErreur('');
-    try { await fn(); rafraichir(); } catch (e) { setErreur(messageErreur(e)); }
+    try { await fn(); await rafraichir(); } catch (e) { setErreur(messageErreur(e)); }
   };
 
   if (!code) {
@@ -67,6 +89,9 @@ export default function FicheObjet() {
     );
   }
 
+  const pret = pretOuvertDe(prets, objet.id);
+  const estMonPret = !!pret && pret.logi_emprunteurs?.compte_id === userId;
+  const actions = actionsFiche({ objet, role, prets, estMonPret });
   const ecrit = peutEcrire(role);
 
   return (
@@ -84,9 +109,18 @@ export default function FicheObjet() {
 
       {erreur && <p className="plai-error" role="alert">{erreur}</p>}
 
+      {!objet.consommable && (
+        <BlocPret objet={objet} objets={objets} prets={prets} actions={actions} emprunteurs={emprunteurs} orgId={objOrg} surChangement={rafraichir} />
+      )}
+      <BlocStock objet={objet} actions={actions} surChangement={rafraichir} />
+      <BlocReservations objet={objet} reservations={reservations} actions={actions} role={role} userId={userId} emprunteurs={emprunteurs} surChangement={rafraichir} />
+      <BlocKit objet={objet} objets={objets} />
+      <BlocAchat objet={objet} />
+      <BlocPanne objet={objet} actions={actions} surChangement={rafraichir} />
+
       {ecrit && (
         <section>
-          <h2>Actions</h2>
+          <h2>Gestion</h2>
           <div className="actions">
             <Link className="plai-btn btn-lien" to={`/o/${objet.code}/modifier`}>Modifier la fiche</Link>
             <Link className="plai-btn-ghost btn-lien" to={`/etiquettes?codes=${objet.code}`}>Imprimer l'étiquette</Link>
@@ -123,6 +157,7 @@ export default function FicheObjet() {
               </button>
             </div>
           </ChampGuide>
+          <BlocNfc objet={objet} />
         </section>
       )}
 

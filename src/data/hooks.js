@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { listerObjets, urlsPhotos } from './objets.js';
 import { listerReferentiel } from './referentiels.js';
+import { listerPrets, listerReservations, listerEmprunteurs } from './prets.js';
 
 export const useObjets = (orgId) =>
   useQuery({ queryKey: ['objets', orgId], enabled: !!orgId, queryFn: () => listerObjets(orgId) });
@@ -21,3 +22,12 @@ export function usePhotos(objets) {
   });
   return data ?? {};
 }
+
+export const usePrets = (orgId, options) =>
+  useQuery({ queryKey: ['prets', orgId, options?.ouverts ?? false], enabled: !!orgId, queryFn: () => listerPrets(orgId, options) });
+
+export const useReservations = (orgId) =>
+  useQuery({ queryKey: ['reservations', orgId], enabled: !!orgId, queryFn: () => listerReservations(orgId) });
+
+export const useEmprunteurs = (orgId, enabled = true) =>
+  useQuery({ queryKey: ['emprunteurs', orgId], enabled: !!orgId && enabled, queryFn: () => listerEmprunteurs(orgId) });

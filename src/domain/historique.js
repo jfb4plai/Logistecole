@@ -16,6 +16,22 @@ export function libelleEvenement(ev) {
       return `Correction : ${ev.commentaire}`;
     case 'note':
       return `Note : ${ev.commentaire}`;
+    case 'achat':
+      return `Acheté le ${ev.apres}${ev.commentaire ? ` (${ev.commentaire})` : ''}`;
+    case 'pret':
+      return ev.apres ? `Prêté à ${ev.apres} : ${ev.commentaire}` : ev.commentaire;
+    case 'retour':
+      return `Rendu, état : ${libelleEtat(ev.apres)}${ev.commentaire ? `. ${ev.commentaire}` : ''}`;
+    case 'retour_partiel':
+      return `Rendu incomplet. ${ev.commentaire}`;
+    case 'panne':
+      return `Problème signalé : ${ev.commentaire}`;
+    case 'reparation':
+      return ev.commentaire ? `Réparé : ${ev.commentaire}` : 'Réparé';
+    case 'stock':
+      return `Stock : ${ev.avant} → ${ev.apres}${ev.commentaire ? ` (${ev.commentaire})` : ''}`;
+    case 'reservation':
+      return ev.apres ? `Réservé par ${ev.apres} : ${ev.commentaire}` : ev.commentaire;
     default:
       return 'Événement';
   }
