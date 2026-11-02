@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useOrg } from '../lib/org.jsx';
 import { listerReferentiel, ajouterReferentiel, renommerReferentiel, supprimerReferentiel } from '../data/referentiels.js';
 import { messageErreur } from '../lib/erreurs.js';
+import { cheminsEmplacements } from '../domain/emplacements.js';
 import ChampGuide from '../components/ChampGuide.jsx';
 
 export default function AdminReferentiel({ table, titre, placeholder, aide, avecParent = false }) {
@@ -15,9 +16,8 @@ export default function AdminReferentiel({ table, titre, placeholder, aide, avec
   const [erreur, setErreur] = useState('');
 
   const elements = q.data ?? [];
-  const parNom = Object.fromEntries(elements.map((e) => [e.id, e]));
-  const chemin = (e) => (e.parent_id && parNom[e.parent_id] ? `${chemin(parNom[e.parent_id])} › ${e.nom}` : e.nom);
-  const tries = [...elements].sort((a, b) => chemin(a).localeCompare(chemin(b), 'fr'));
+  const tries = cheminsEmplacements(elements);
+  const chemin = (e) => tries.find((x) => x.id === e.id)?.chemin ?? e.nom;
 
   async function agir(fn) {
     setErreur('');

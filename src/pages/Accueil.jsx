@@ -9,6 +9,7 @@ import { peutEcrire } from '../domain/permissions.js';
 import { statutPret } from '../domain/echeance.js';
 import { estSousSeuil } from '../domain/stock.js';
 import { pretOuvertDe, pretsEnCours } from '../domain/kit.js';
+import { cheminsEmplacements, cheminDe } from '../domain/emplacements.js';
 import { messageErreur } from '../lib/erreurs.js';
 import EtatBadge from '../components/EtatBadge.jsx';
 
@@ -53,7 +54,7 @@ export default function Accueil() {
         </select>
         <select className="plai-input" aria-label="Emplacement" value={f.emplacementId} onChange={maj('emplacementId')}>
           <option value="">Tous les emplacements</option>
-          {emps.map((e) => <option key={e.id} value={e.id}>{e.nom}</option>)}
+          {cheminsEmplacements(emps).map((e) => <option key={e.id} value={e.id}>{e.chemin}</option>)}
         </select>
         <select className="plai-input" aria-label="État" value={f.etat} onChange={maj('etat')}>
           <option value="">Tous les états (hors sortis)</option>
@@ -84,7 +85,7 @@ export default function Accueil() {
                 <span className="ligne-texte">
                   <strong>{o.nom}</strong>
                   <span className="meta">
-                    {o.consommable ? `${o.quantite} en stock` : (o.logi_emplacements?.nom ?? 'Sans emplacement')} · <span className="code-court">{formaterCode(o.code)}</span>
+                    {o.consommable ? `${o.quantite} en stock` : (cheminDe(emps, o.emplacement_id) ?? o.logi_emplacements?.nom ?? 'Sans emplacement')} · <span className="code-court">{formaterCode(o.code)}</span>
                     {pret && <> · Prêté à {pret.logi_emprunteurs?.libelle}</>}
                   </span>
                 </span>

@@ -12,6 +12,7 @@ import { normaliserCode, formaterCode } from '../domain/codes.js';
 import { ETATS } from '../domain/etats.js';
 import { actionsFiche } from '../domain/actions.js';
 import { pretOuvertDe } from '../domain/kit.js';
+import { cheminsEmplacements, cheminDe } from '../domain/emplacements.js';
 import { estAdmin, peutEcrire } from '../domain/permissions.js';
 import { messageErreur } from '../lib/erreurs.js';
 import EtatBadge from '../components/EtatBadge.jsx';
@@ -103,7 +104,7 @@ export default function FicheObjet() {
 
       <section className="plai-card">
         <p><strong>Catégorie :</strong> {objet.logi_categories?.nom ?? 'Aucune'}</p>
-        <p><strong>Emplacement :</strong> {objet.logi_emplacements?.nom ?? 'Aucun'}</p>
+        <p><strong>Emplacement :</strong> {cheminDe(emps, objet.emplacement_id) ?? objet.logi_emplacements?.nom ?? 'Aucun'}</p>
         {objet.notes && <p><strong>Notes :</strong> {objet.notes}</p>}
       </section>
 
@@ -130,7 +131,7 @@ export default function FicheObjet() {
             <div className="bloc-action">
               <select id="deplacer" aria-describedby="deplacer-aide" className="plai-input" value={emp} onChange={(e) => setEmp(e.target.value)}>
                 <option value="">Choisir un emplacement…</option>
-                {emps.map((e) => <option key={e.id} value={e.id}>{e.nom}</option>)}
+                {cheminsEmplacements(emps).map((e) => <option key={e.id} value={e.id}>{e.chemin}</option>)}
               </select>
               <button className="plai-btn" disabled={!emp || emp === objet.emplacement_id} onClick={run(() => modifierObjet(objet.id, { emplacement_id: emp }))}>Déplacer</button>
             </div>

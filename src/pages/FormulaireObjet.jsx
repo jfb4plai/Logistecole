@@ -10,6 +10,7 @@ import { validerFichierPhoto, compresserImage } from '../domain/image.js';
 import { validerAchat } from '../domain/achat.js';
 import { analyserLiens, formaterLiens } from '../domain/liens.js';
 import { elementsDuKit, racines } from '../domain/kit.js';
+import { cheminsEmplacements } from '../domain/emplacements.js';
 import { ETATS } from '../domain/etats.js';
 import { peutEcrire } from '../domain/permissions.js';
 import { messageErreur } from '../lib/erreurs.js';
@@ -170,7 +171,7 @@ export default function FormulaireObjet({ mode }) {
       <ChampGuide id="emplacement" label="Emplacement" aide="Où l'objet est rangé (facultatif). Vous pourrez le déplacer plus tard : chaque déplacement est gardé dans l'historique.">
         <select id="emplacement" aria-describedby="emplacement-aide" className="plai-input" value={f.emplacement_id} onChange={maj('emplacement_id')}>
           <option value="">Aucun emplacement</option>
-          {emps.map((e) => <option key={e.id} value={e.id}>{e.nom}</option>)}
+          {cheminsEmplacements(emps).map((e) => <option key={e.id} value={e.id}>{e.chemin}</option>)}
         </select>
       </ChampGuide>
 

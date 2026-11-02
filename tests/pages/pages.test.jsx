@@ -37,7 +37,7 @@ vi.mock('../../src/data/prets.js', () => ({
   reserver: vi.fn(async () => 'r'), annulerReservation: vi.fn(async () => {}),
 }));
 vi.mock('../../src/data/referentiels.js', () => ({
-  listerReferentiel: async (t) => (t === 'logi_categories' ? [{ id: 'c1', nom: 'Tablettes' }] : [{ id: 'e1', nom: 'Salle 12' }]),
+  listerReferentiel: async (t) => (t === 'logi_categories' ? [{ id: 'c1', nom: 'Tablettes' }] : [{ id: 'e1', nom: 'Salle 12', parent_id: null }, { id: 'e2', nom: 'Armoire A', parent_id: 'e1' }]),
   ajouterReferentiel: vi.fn(), renommerReferentiel: vi.fn(), supprimerReferentiel: vi.fn(),
 }));
 vi.mock('../../src/data/membres.js', () => ({
@@ -253,6 +253,15 @@ describe('Fiche : réservations, pannes, stock, achat', () => {
   });
 });
 
+describe('Emplacements : le chemin complet partout', () => {
+  it('le formulaire propose « Salle 12 › Armoire A » et pas seulement « Armoire A »', async () => {
+    monter(<Routes><Route path="/nouveau" element={<FormulaireObjet mode="creer" />} /></Routes>, '/nouveau');
+    const select = await screen.findByLabelText('Emplacement');
+    await waitFor(() => expect([...select.options].map((o) => o.textContent)).toContain('Salle 12 › Armoire A'));
+    expect([...select.options].map((o) => o.textContent)).not.toContain('Armoire A');
+  });
+});
+
 describe('Formulaire', () => {
   const formulaire = () => monter(<Routes><Route path="/nouveau" element={<FormulaireObjet mode="creer" />} /></Routes>, '/nouveau');
   it('refuse un lot invalide avant tout appel réseau', async () => {
@@ -273,8 +282,10 @@ describe('Formulaire', () => {
     fireEvent.change(screen.getByLabelText('Date d\'achat'), { target: { value: '2026-09-15' } });
     fireEvent.change(screen.getByLabelText('Un lien par ligne'), { target: { value: 'Notice | https://exemple.be/n' } });
     fireEvent.change(screen.getByLabelText('Fait partie du kit'), { target: { value: 'K' } });
+    fireEvent.change(screen.getByLabelText('Emplacement'), { target: { value: 'e1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Ajouter' }));
     await waitFor(() => expect(objetsApi.creerObjets).toHaveBeenCalled());
+    expect(objetsApi.creerObjets.mock.calls[0][1].every((l) => l.emplacement_id === 'e1')).toBe(true);
     const lot = objetsApi.creerObjets.mock.calls[0][1];
     expect(lot).toHaveLength(2);
     expect(new Set(lot.map((l) => l.code)).size).toBe(2);
