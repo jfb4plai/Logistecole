@@ -66,6 +66,8 @@ export default function Scan() {
           <input id="code" aria-describedby="code-aide" className="plai-input" placeholder="Ex. : ABCD-2345" autoCapitalize="characters" value={saisie} onChange={(e) => setSaisie(e.target.value)} />
         </ChampGuide>
         <button className="plai-btn">Ouvrir la fiche</button>
+        {/* Sans caméra, le message du haut n'est pas affiché : l'erreur de saisie doit rester visible ici. */}
+        {alerte && camera === 'indisponible' && <p className="plai-error" role="alert">{message}</p>}
       </form>
     </>
   );
