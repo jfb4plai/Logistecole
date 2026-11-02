@@ -2,5 +2,5 @@
 -- et les 8 catégories de départ. À exécuter une seule fois dans le SQL Editor.
 select logi_nouvelle_organisation(
   'Pôle PLAI (essai)', 'pole',
-  (select id from auth.users where lower(email) = 'jf.beguin@outlook.com')
+  (select id from auth.users where lower(email) = 'jeanfrancois.beguin@ens.ecl.be')
 ) as organisation_id;

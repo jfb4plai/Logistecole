@@ -27,7 +27,7 @@ Dans cet ordre, un fichier à la fois (ouvrir, tout copier, coller, Run) :
 2. `C:\Users\jfbeg\OneDrive\claude-workspace\logistecole\supabase\migrations\20261014_logistecole_prets.sql` : prêts, kits, réservations, stock, pannes, achat, rôle enseignant. Attendu : `Success. No rows returned`.
 3. `C:\Users\jfbeg\OneDrive\claude-workspace\logistecole\supabase\tests\logistecole_rls.sql` : attendu `LOGISTECOLE RLS : tous les tests passent` (se termine par un `rollback`).
 4. `C:\Users\jfbeg\OneDrive\claude-workspace\logistecole\supabase\tests\logistecole_prets.sql` : attendu `LOGISTECOLE PRETS : tous les tests passent` (idem).
-5. `C:\Users\jfbeg\OneDrive\claude-workspace\logistecole\supabase\seed-organisation-essai.sql` : crée « Pôle PLAI (essai) » avec `jf.beguin@outlook.com` comme administrateur.
+5. `C:\Users\jfbeg\OneDrive\claude-workspace\logistecole\supabase\seed-organisation-essai.sql` : crée « Pôle PLAI (essai) » avec `jeanfrancois.beguin@ens.ecl.be` comme administrateur.
 
 Si une des étapes 3 ou 4 affiche une erreur, copier le message : il indique la règle qui échoue.
 

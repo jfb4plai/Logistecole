@@ -25,7 +25,7 @@ Racine du projet (toutes les commandes s'exécutent ici sauf mention) : `C:\User
 - Interface : texte 16 px minimum, boutons et champs d'au moins 44 px de haut, état jamais signalé par la couleur seule, pas d'emojis, aucun terme « collège / lycée » (exemples FWB : école, implantation, CEB, CE1D).
 - Tout champ de formulaire : label précis + placeholder concret avec exemple FWB + texte d'aide sous le champ (composant `ChampGuide`).
 - Charte : teal #0f6e56, orange #f97316, DM Sans (texte), DM Serif Display (titres), logo `/plai-logo.jpg` à hauteur fixe 32 px (nav) / 40 px (footer), largeur automatique (logo non carré, ratio 2,56:1). Pas de suffixe « -Actif ».
-- Email de contact public : `jf.beguin@outlook.com`.
+- Email de contact : `jeanfrancois.beguin@ens.ecl.be` (outil strictement scolaire, décision de JF du 2026-11-03).
 - Pas de mode hors ligne, pas de notifications, pas d'application native : le dire dans l'interface (encart « ce qui arrive ensuite »).
 
 ## Review Focus

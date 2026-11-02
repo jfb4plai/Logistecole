@@ -7,7 +7,7 @@ export default function AucuneOrganisation() {
         Demandez à l'administrateur de votre organisation de vous inviter avec votre adresse e-mail.
       </p>
       <p>
-        Une question ? Écrivez à <a href="mailto:jf.beguin@outlook.com">jf.beguin@outlook.com</a>.
+        Une question ? Écrivez à <a href="mailto:jeanfrancois.beguin@ens.ecl.be">jeanfrancois.beguin@ens.ecl.be</a>.
       </p>
     </section>
   );
