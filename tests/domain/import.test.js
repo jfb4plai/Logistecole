@@ -15,6 +15,41 @@ describe('lireCsv', () => {
   });
 });
 
+describe('dates et états tels que les tableurs les écrivent (constaté avec un vrai fichier enregistré par Excel)', () => {
+  const categories = [{ id: 'c1', nom: 'Matériel de sciences' }];
+  const lire = (cellule, colonne = 'date d\u2019achat') =>
+    analyserImport([['nom', 'catégorie', colonne], ['Loupe', 'Matériel de sciences', cellule]], { categories });
+
+  it('lit l\u2019année sur 2 chiffres et les tirets, comme Excel réécrit un CSV (15-09-26)', () => {
+    expect(lire('15-09-26').objets[0].date_achat).toBe('2026-09-15');
+    expect(lire('15/09/26').objets[0].date_achat).toBe('2026-09-15');
+    expect(lire('15.09.26').objets[0].date_achat).toBe('2026-09-15');
+  });
+  it('lit aussi l\u2019année sur 4 chiffres, les jours et mois sur un chiffre, et une heure à minuit', () => {
+    expect(lire('15-09-2026').objets[0].date_achat).toBe('2026-09-15');
+    expect(lire('5/9/2026').objets[0].date_achat).toBe('2026-09-05');
+    expect(lire('15/09/2026 00:00').objets[0].date_achat).toBe('2026-09-15');
+    expect(lire('15/09/2026 00:00:00').objets[0].date_achat).toBe('2026-09-15');
+  });
+  it('année sur 2 chiffres : 00 à 69 = 2000 à 2069, 70 à 99 = 1970 à 1999', () => {
+    expect(lire('01-01-69').objets[0].date_achat).toBe('2069-01-01');
+    expect(lire('01-01-70').objets[0].date_achat).toBe('1970-01-01');
+  });
+  it('refuse une date qui n\u2019existe pas, au lieu de la décaler', () => {
+    for (const mauvaise of ['31/02/2026', '32/01/2026', '15/13/2026', '00/01/2026', 'demain']) {
+      const r = lire(mauvaise);
+      expect(r.objets).toEqual([]);
+      expect(r.erreurs[0].message).toMatch(/illisible/);
+    }
+  });
+  it('accepte l\u2019état « neuf » avec ou sans majuscule, et le dit dans le message d\u2019erreur d\u2019un état inconnu', () => {
+    const ok = analyserImport([['nom', 'catégorie', 'état'], ['Loupe', 'Matériel de sciences', 'neuf'], ['Boussole', 'Matériel de sciences', 'Neuf'], ['Balance', 'Matériel de sciences', 'En bon état']], { categories });
+    expect(ok.objets.map((o) => o.etat)).toEqual(['neuf', 'neuf']);
+    expect(ok.erreurs).toHaveLength(1);
+    expect(ok.erreurs[0].message).toMatch(/neuf, bon, usé, défectueux ou perdu/);
+  });
+});
+
 describe('validerFichierImport', () => {
   it('accepte .xlsx et .csv de taille raisonnable', () => {
     expect(validerFichierImport({ name: 'inventaire.xlsx', size: 120000 }).ok).toBe(true);

@@ -29,7 +29,7 @@ const COLONNES = {
   lien: ['lien', 'liens', 'url', 'adresse', 'mode d emploi'],
 };
 
-const ETATS = { bon: 'bon', 'bon etat': 'bon', use: 'use', defectueux: 'defectueux', perdu: 'perdu' };
+const ETATS = { neuf: 'neuf', bon: 'bon', 'bon etat': 'bon', use: 'use', defectueux: 'defectueux', perdu: 'perdu' };
 
 const cellule = (v) => (v instanceof Date ? v : String(v ?? '').trim());
 const vide = (v) => v === '' || v == null;
@@ -44,11 +44,22 @@ function versIso(v) {
   }
   if (typeof v === 'number') return dateIso(new Date(Date.UTC(1899, 11, 30) + v * 86400000));
   const t = String(v).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
-  const m = t.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
-  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return jourExiste(+t.slice(0, 4), +t.slice(5, 7), +t.slice(8, 10)) ? t : null;
+  // JJ/MM/AAAA, JJ-MM-AA, JJ.MM.AA… (Excel réécrit un CSV avec l'année sur 2 chiffres), heure à minuit tolérée.
+  const m = t.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4}|\d{2})(?:[ T]00:00(?::00)?)?$/);
+  if (m) {
+    const annee = m[3].length === 2 ? (+m[3] < 70 ? 2000 : 1900) + +m[3] : +m[3];
+    return jourExiste(annee, +m[2], +m[1])
+      ? `${annee}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : null;
+  }
   if (/^\d+$/.test(t)) return versIso(Number(t));
   return null;
+}
+
+// Refuse 31/02 au lieu de le décaler au 3 mars.
+function jourExiste(a, m, j) {
+  const d = new Date(Date.UTC(a, m - 1, j));
+  return d.getUTCFullYear() === a && d.getUTCMonth() === m - 1 && d.getUTCDate() === j;
 }
 
 export function analyserImport(lignes, { categories = [], emplacements = [], creerManquants = false } = {}) {
@@ -111,7 +122,7 @@ export function analyserImport(lignes, { categories = [], emplacements = [], cre
     const e = get('etat');
     if (!vide(e)) {
       etat = ETATS[normaliserNom(e)];
-      if (!etat) erreursLigne.push(`État « ${e} » inconnu (bon, usé, défectueux ou perdu).`);
+      if (!etat) erreursLigne.push(`État « ${e} » inconnu (neuf, bon, usé, défectueux ou perdu).`);
     }
 
     const brut = {};
