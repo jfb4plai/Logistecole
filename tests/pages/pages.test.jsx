@@ -147,7 +147,7 @@ describe('Fiche : prêt', () => {
     fiche('KKKK2222');
     expect(await screen.findByText(/Prêté à prof@ecole.be/)).toBeInTheDocument();
     expect(screen.getByText(/À rendre le/)).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText('Tablette 1')); // décoche : il manque
+    fireEvent.click(screen.getByLabelText(/Tablette 1 \(TTTT-2224\)/)); // décoche : il manque, le code distingue les exemplaires
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer le retour' }));
     await waitFor(() => expect(pretsApi.rendre).toHaveBeenCalledWith(['p1'], 'bon', null));
   });
@@ -185,6 +185,7 @@ describe('Suivi : kit revenu incomplet', () => {
     monter(<Suivi />);
     expect(await screen.findByText(/Élément non rendu du kit/)).toBeInTheDocument();
     expect(screen.getByText('Tablette 1', { selector: 'strong' })).toBeInTheDocument();
+    expect(screen.getByText(/TTTT-2224/)).toBeInTheDocument();
   });
 });
 
@@ -277,7 +278,8 @@ describe('Formulaire', () => {
     const lot = objetsApi.creerObjets.mock.calls[0][1];
     expect(lot).toHaveLength(2);
     expect(new Set(lot.map((l) => l.code)).size).toBe(2);
-    expect(lot[0]).toMatchObject({ nom: 'Tablette', prix_achat: 299, date_achat: '2026-09-15', parent_id: 'K', consommable: false, liens: [{ titre: 'Notice', url: 'https://exemple.be/n' }] });
+    expect(lot.map((l) => l.nom)).toEqual(['Tablette 1', 'Tablette 2']);
+    expect(lot[0]).toMatchObject({ prix_achat: 299, date_achat: '2026-09-15', parent_id: 'K', consommable: false, liens: [{ titre: 'Notice', url: 'https://exemple.be/n' }] });
   });
   it('refuse un lien dangereux et une garantie avant l\'achat', async () => {
     formulaire();

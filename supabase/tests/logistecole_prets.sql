@@ -154,7 +154,7 @@ do $t$ begin
   perform logi_rendre(array(select id from logi_prets where retour_le is null and objet_id in (
     'd0000000-0000-0000-0000-00000000000a', 'd0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002')), 'bon', 'Rendu en salle des profs');
   assert (select count(*) from logi_prets where retour_le is null) = 1, 'il reste le prêt de la tablette 3';
-  assert exists (select 1 from logi_historique where objet_id = 'd0000000-0000-0000-0000-00000000000a' and type = 'retour_partiel' and commentaire like '%Tablette 3%'), 'la racine note ce qui manque';
+  assert exists (select 1 from logi_historique where objet_id = 'd0000000-0000-0000-0000-00000000000a' and type = 'retour_partiel' and commentaire like '%Tablette 3 (TTTT2226)%'), 'la racine note ce qui manque, avec le code qui distingue les exemplaires';
   assert (select count(*) from logi_historique where type = 'retour') = 3, 'trois retours tracés';
 end $t$;
 reset role;

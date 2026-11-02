@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useOrg } from '../lib/org.jsx';
 import { creerObjets, modifierObjet, getObjetParCode, uploaderPhoto, supprimerPhoto } from '../data/objets.js';
 import { useCategories, useEmplacements, useObjets } from '../data/hooks.js';
-import { validerLot } from '../domain/lot.js';
+import { validerLot, nomsDuLot } from '../domain/lot.js';
 import { genererCodes, normaliserCode } from '../domain/codes.js';
 import { validerFichierPhoto, compresserImage } from '../domain/image.js';
 import { validerAchat } from '../domain/achat.js';
@@ -18,7 +18,7 @@ import ChampGuide from '../components/ChampGuide.jsx';
 const VIDE = {
   nom: '', categorie_id: '', emplacement_id: '', etat: 'bon', notes: '', quantite: '1',
   date_achat: '', fournisseur: '', prix_achat: '', garantie_fin: '', numero_serie: '', facture_url: '', financement: '',
-  liens: '', parent_id: '', consommable: false, stock: '', seuil_min: '',
+  liens: '', parent_id: '', consommable: false, stock: '', seuil_min: '', numeroter: true,
 };
 
 const entierOuNull = (v) => (String(v).trim() === '' ? null : Number(v));
@@ -77,7 +77,7 @@ export default function FormulaireObjet({ mode }) {
     setErreur('');
     if (!f.categorie_id) { setErreur('Choisissez une catégorie.'); return; }
     const conso = !modif && f.consommable;
-    const lot = validerLot({ nom: f.nom, quantite: modif || conso ? 1 : f.quantite });
+    const lot = validerLot({ nom: f.nom, quantite: modif || conso ? 1 : f.quantite, numeroter: f.numeroter });
     if (!lot.ok) { setErreur(lot.erreur); return; }
     const achat = validerAchat(f);
     if (!achat.ok) { setErreur(achat.erreurs.join(' ')); return; }
@@ -127,9 +127,10 @@ export default function FormulaireObjet({ mode }) {
       let crees;
       for (let essai = 0; ; essai++) {
         const codes = genererCodes(lot.quantite);
+        const noms = nomsDuLot(lot.nom, lot.quantite, f.numeroter);
         try {
-          crees = await creerObjets(orgId, codes.map((code) => ({
-            ...commun, etat: f.etat, photo_path: photoPath, facture_photo_path: facturePath, code,
+          crees = await creerObjets(orgId, codes.map((code, i) => ({
+            ...commun, nom: noms[i], etat: f.etat, photo_path: photoPath, facture_photo_path: facturePath, code,
             consommable: conso, quantite: conso ? stock : null,
           })));
           break;
@@ -187,9 +188,17 @@ export default function FormulaireObjet({ mode }) {
           </div>
 
           {!f.consommable ? (
-            <ChampGuide id="quantite" label="Nombre d'exemplaires identiques" obligatoire aide="Pour 16 tablettes identiques, tapez 16 : chacune reçoit son propre code et sa propre étiquette. Entre 1 et 100 à la fois.">
-              <input id="quantite" aria-describedby="quantite-aide" className="plai-input" inputMode="numeric" placeholder="Ex. : 16" value={f.quantite} onChange={maj('quantite')} />
-            </ChampGuide>
+            <>
+              <ChampGuide id="quantite" label="Nombre d'exemplaires identiques" obligatoire aide="Pour 16 tablettes identiques, tapez 16 : chacune reçoit son propre code et sa propre étiquette. Entre 1 et 100 à la fois.">
+                <input id="quantite" aria-describedby="quantite-aide" className="plai-input" inputMode="numeric" placeholder="Ex. : 16" value={f.quantite} onChange={maj('quantite')} />
+              </ChampGuide>
+              {Number(f.quantite) > 1 && (
+                <div className="plai-field">
+                  <label className="liste-cases"><span><input type="checkbox" checked={f.numeroter} onChange={maj('numeroter')} /> Numéroter les exemplaires ({f.nom.trim() || 'Tablette'} 1, {f.nom.trim() || 'Tablette'} 2…)</span></label>
+                  <p className="champ-aide">Recommandé : au retour d'un kit, vous devez pouvoir dire quelle tablette manque. Décochez seulement pour des objets vraiment interchangeables.</p>
+                </div>
+              )}
+            </>
           ) : (
             <ChampGuide id="stock" label="Quantité en stock" obligatoire aide="Combien vous en avez aujourd'hui. Les mouvements suivants se notent sur la fiche.">
               <input id="stock" aria-describedby="stock-aide" className="plai-input" inputMode="numeric" placeholder="Ex. : 24" value={f.stock} onChange={maj('stock')} />

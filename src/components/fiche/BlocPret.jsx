@@ -4,6 +4,7 @@ import { dateIso, echeanceParDefaut, statutPret } from '../../domain/echeance.js
 import { ETATS_RETOUR } from '../../domain/etats.js';
 import { elementsDuKit, pretOuvertDe, verifierPretPossible } from '../../domain/kit.js';
 import { messageErreur } from '../../lib/erreurs.js';
+import { formaterCode } from '../../domain/codes.js';
 import ChampGuide from '../ChampGuide.jsx';
 
 const TYPES = [
@@ -135,7 +136,7 @@ export default function BlocPret({ objet, objets, prets, actions, emprunteurs, o
                     <label>
                       <input type="checkbox" checked={!absents.has(p.id)}
                         onChange={() => setAbsents((s) => { const n = new Set(s); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })} />
-                      <span>{p.logi_objets?.nom}</span>
+                      <span>{p.logi_objets?.nom} <span className="code-court">({formaterCode(p.logi_objets?.code ?? '')})</span></span>
                     </label>
                   </li>
                 ))}

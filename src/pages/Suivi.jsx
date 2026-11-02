@@ -2,9 +2,9 @@ import { Link } from 'react-router-dom';
 import { useOrg } from '../lib/org.jsx';
 import { useObjets, usePrets, useReservations } from '../data/hooks.js';
 import { statutPret } from '../domain/echeance.js';
+import { formaterCode } from '../domain/codes.js';
 import { pretsEnCours } from '../domain/kit.js';
 import { estSousSeuil } from '../domain/stock.js';
-import { formaterCode } from '../domain/codes.js';
 import { messageErreur } from '../lib/erreurs.js';
 import EtatBadge from '../components/EtatBadge.jsx';
 
@@ -42,7 +42,7 @@ export default function Suivi() {
             {enCours.map(({ pret, statut }) => (
               <li key={pret.id}>
                 <Link to={`/o/${pret.logi_objets?.code}`} className="ligne-objet">
-                  <span className="ligne-texte"><strong>{pret.logi_objets?.nom}</strong><span className="meta">{pret.manquant && 'Élément non rendu du kit · '}{pret.logi_emprunteurs?.libelle} · {statut.libelle}</span></span>
+                  <span className="ligne-texte"><strong>{pret.logi_objets?.nom}</strong><span className="meta">{pret.manquant && `Élément non rendu du kit · ${formaterCode(pret.logi_objets?.code ?? '')} · `}{pret.logi_emprunteurs?.libelle} · {statut.libelle}</span></span>
                   <span className={`badge-etat badge-${ton[statut.niveau]}`}>{statut.niveau === 'retard' ? 'En retard' : statut.niveau === 'bientot' ? 'Bientôt' : 'En cours'}</span>
                 </Link>
               </li>

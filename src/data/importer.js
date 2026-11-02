@@ -2,6 +2,7 @@ import { creerObjets } from './objets.js';
 import { ajouterReferentiel, listerReferentiel } from './referentiels.js';
 import { genererCodes } from '../domain/codes.js';
 import { normaliserNom } from '../domain/import.js';
+import { nomsDuLot } from '../domain/lot.js';
 import { decoderTexte, lireCsv } from '../domain/csv.js';
 
 // Lit un .xlsx (première feuille) ou un .csv (UTF-8 ou Windows-1252) et renvoie des lignes.
@@ -27,9 +28,11 @@ export async function executerImport({ orgId, analyse, surProgres }) {
   const lignes = [];
   for (const o of analyse.objets) {
     const { quantite, categorie, emplacement, categorie_id, emplacement_id, ...champs } = o;
+    const noms = nomsDuLot(champs.nom, quantite, true);
     for (let i = 0; i < quantite; i++) {
       lignes.push({
         ...champs,
+        nom: noms[i],
         categorie_id: categorie_id ?? cats.get(normaliserNom(categorie)),
         emplacement_id: emplacement_id ?? (emplacement ? emps.get(normaliserNom(emplacement)) ?? null : null),
       });
