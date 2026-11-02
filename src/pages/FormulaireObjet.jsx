@@ -11,6 +11,7 @@ import { validerAchat } from '../domain/achat.js';
 import { analyserLiens, formaterLiens } from '../domain/liens.js';
 import { elementsDuKit, racines } from '../domain/kit.js';
 import { cheminsEmplacements } from '../domain/emplacements.js';
+import { dateIso } from '../domain/echeance.js';
 import { ETATS } from '../domain/etats.js';
 import { peutEcrire } from '../domain/permissions.js';
 import { messageErreur } from '../lib/erreurs.js';
@@ -238,8 +239,8 @@ export default function FormulaireObjet({ mode }) {
       <details className="plai-card details-form">
         <summary>Achat et garantie (facultatif)</summary>
         <p className="champ-aide">Garde la mémoire de l'achat. Ce n'est pas de la comptabilité : rien n'est calculé.</p>
-        <ChampGuide id="date_achat" label="Date d'achat" aide="Apparaît dans l'historique de l'objet.">
-          <input id="date_achat" type="date" aria-describedby="date_achat-aide" className="plai-input" value={f.date_achat} onChange={maj('date_achat')} />
+        <ChampGuide id="date_achat" label="Date d'achat" aide="Apparaît dans l'historique de l'objet. Tapez jour, mois, année sur 4 chiffres.">
+          <input id="date_achat" type="date" min="2000-01-01" max={dateIso(new Date())} aria-describedby="date_achat-aide" className="plai-input" value={f.date_achat} onChange={maj('date_achat')} />
         </ChampGuide>
         <ChampGuide id="fournisseur" label="Fournisseur" aide="Où il a été acheté ou qui l'a donné.">
           <input id="fournisseur" aria-describedby="fournisseur-aide" className="plai-input" maxLength={120} placeholder="Ex. : Librairie scolaire de Liège" value={f.fournisseur} onChange={maj('fournisseur')} />
@@ -248,7 +249,7 @@ export default function FormulaireObjet({ mode }) {
           <input id="prix_achat" aria-describedby="prix_achat-aide" className="plai-input" inputMode="decimal" placeholder="Ex. : 299,00" value={f.prix_achat} onChange={maj('prix_achat')} />
         </ChampGuide>
         <ChampGuide id="garantie_fin" label="Fin de garantie" aide="Permet de savoir si une réparation est encore couverte. Après la date d'achat.">
-          <input id="garantie_fin" type="date" aria-describedby="garantie_fin-aide" className="plai-input" value={f.garantie_fin} onChange={maj('garantie_fin')} />
+          <input id="garantie_fin" type="date" min="2000-01-01" max="2099-12-31" aria-describedby="garantie_fin-aide" className="plai-input" value={f.garantie_fin} onChange={maj('garantie_fin')} />
         </ChampGuide>
         <ChampGuide id="numero_serie" label="Numéro de série" aide="Utile pour une réparation ou en cas de vol. Il est le même pour tous les exemplaires d'un lot : modifiez-le ensuite fiche par fiche si besoin.">
           <input id="numero_serie" aria-describedby="numero_serie-aide" className="plai-input" maxLength={80} placeholder="Ex. : SN-4F8K2L19" value={f.numero_serie} onChange={maj('numero_serie')} />

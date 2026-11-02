@@ -14,3 +14,12 @@ export function validerCreneau({ debut, fin }, now = new Date()) {
   if (f.getTime() - d.getTime() > 30 * 86400000) return { ok: false, erreur: 'Une réservation dure 30 jours au plus.' };
   return { ok: true, debut: d.toISOString(), fin: f.toISOString() };
 }
+
+const deux = (n) => String(n).padStart(2, '0');
+
+// Bornes des champs « date et heure ». Sans maximum, Chrome et Edge laissent taper une année à 6 chiffres :
+// les chiffres de l'heure partent alors dans l'année et tout se décale.
+export function bornesCreneau(now = new Date()) {
+  const min = `${now.getFullYear()}-${deux(now.getMonth() + 1)}-${deux(now.getDate())}T${deux(now.getHours())}:${deux(now.getMinutes())}`;
+  return { min, max: '2099-12-31T23:59' };
+}

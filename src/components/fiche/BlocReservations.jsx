@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { reserver, annulerReservation } from '../../data/prets.js';
-import { validerCreneau } from '../../domain/creneau.js';
+import { validerCreneau, bornesCreneau } from '../../domain/creneau.js';
 import { peutEcrire } from '../../domain/permissions.js';
 import { messageErreur } from '../../lib/erreurs.js';
 import ChampGuide from '../ChampGuide.jsx';
@@ -15,6 +15,7 @@ export default function BlocReservations({ objet, reservations, actions, role, u
   const [info, setInfo] = useState('');
   const [occupe, setOccupe] = useState(false);
   const liste = reservations.filter((r) => r.objet_id === objet.id);
+  const bornes = bornesCreneau();
 
   async function agir(fn, message) {
     setErreur(''); setInfo(''); setOccupe(true);
@@ -43,11 +44,11 @@ export default function BlocReservations({ objet, reservations, actions, role, u
       )}
       {actions.reserver && (
         <>
-          <ChampGuide id="resa-debut" label="Début" aide="Quand vous prendrez l'objet. Impossible de réserver un créneau déjà pris, ni pendant un prêt.">
-            <input id="resa-debut" type="datetime-local" aria-describedby="resa-debut-aide" className="plai-input" value={debut} onChange={(e) => setDebut(e.target.value)} />
+          <ChampGuide id="resa-debut" label="Début" aide="Quand vous prendrez l'objet. Tapez la date puis l'heure (jour, mois, année sur 4 chiffres). Impossible de réserver un créneau déjà pris, ni pendant un prêt.">
+            <input id="resa-debut" type="datetime-local" min={bornes.min} max={bornes.max} aria-describedby="resa-debut-aide" className="plai-input" value={debut} onChange={(e) => setDebut(e.target.value)} />
           </ChampGuide>
           <ChampGuide id="resa-fin" label="Fin" aide="Quand vous le rendrez. Une réservation dure 30 jours au plus.">
-            <input id="resa-fin" type="datetime-local" aria-describedby="resa-fin-aide" className="plai-input" value={fin} onChange={(e) => setFin(e.target.value)} />
+            <input id="resa-fin" type="datetime-local" min={bornes.min} max={bornes.max} aria-describedby="resa-fin-aide" className="plai-input" value={fin} onChange={(e) => setFin(e.target.value)} />
           </ChampGuide>
           {peutEcrire(role) && (
             <ChampGuide id="resa-pour" label="Réserver pour (facultatif)" aide="Laissez vide pour réserver à votre propre nom.">

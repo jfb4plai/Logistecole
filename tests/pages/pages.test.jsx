@@ -300,6 +300,27 @@ describe('Suivi : kit revenu incomplet', () => {
   });
 });
 
+describe('Champs de date : année limitée à 4 chiffres', () => {
+  it('les champs de réservation ont un minimum et un maximum', async () => {
+    ctx.role = 'emprunteur';
+    fiche('PPPP2222');
+    await screen.findByText('Réservations');
+    for (const nom of ['Début', 'Fin']) {
+      const champ = screen.getByLabelText(nom);
+      expect(champ.getAttribute('min')).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+      expect(champ.getAttribute('max')).toBe('2099-12-31T23:59');
+    }
+  });
+  it('les dates d’achat et de garantie du formulaire sont bornées aussi', async () => {
+    monter(<Routes><Route path="/nouveau" element={<FormulaireObjet mode="creer" />} /></Routes>, '/nouveau');
+    const achat = await screen.findByLabelText("Date d'achat");
+    const garantie = screen.getByLabelText('Fin de garantie');
+    expect(achat.getAttribute('max')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(garantie.getAttribute('max')).toBe('2099-12-31');
+    expect(garantie.getAttribute('min')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
 describe('Fiche : réservations, pannes, stock, achat', () => {
   it('réserve un créneau valide et refuse un créneau incohérent sans appeler la base', async () => {
     ctx.role = 'emprunteur';
