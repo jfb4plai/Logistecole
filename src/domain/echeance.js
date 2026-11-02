@@ -13,6 +13,9 @@ function jourLocal(iso) {
 
 const formatLong = new Intl.DateTimeFormat('fr-BE', { weekday: 'long', day: 'numeric', month: 'long' });
 
+// « lundi 9 novembre » à partir de AAAA-MM-JJ.
+export const dateLongue = (iso) => formatLong.format(jourLocal(iso));
+
 // L'heure de la journée est ignorée : on compare des jours calendaires.
 export function statutPret({ echeance }, now = new Date()) {
   const aujourdhui = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -20,5 +23,5 @@ export function statutPret({ echeance }, now = new Date()) {
   if (jours < 0) return { niveau: 'retard', jours, libelle: `En retard de ${-jours} jour${jours === -1 ? '' : 's'}` };
   if (jours === 0) return { niveau: 'bientot', jours, libelle: 'À rendre aujourd\'hui' };
   if (jours === 1) return { niveau: 'bientot', jours, libelle: 'À rendre demain' };
-  return { niveau: 'ok', jours, libelle: `À rendre le ${formatLong.format(jourLocal(echeance))}` };
+  return { niveau: 'ok', jours, libelle: `À rendre le ${dateLongue(echeance)}` };
 }

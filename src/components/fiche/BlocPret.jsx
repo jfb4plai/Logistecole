@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { emprunter, preter, rendre, prolonger, creerEmprunteur } from '../../data/prets.js';
-import { dateIso, echeanceParDefaut, statutPret } from '../../domain/echeance.js';
+import { dateIso, dateLongue, echeanceParDefaut, statutPret } from '../../domain/echeance.js';
 import { ETATS_RETOUR } from '../../domain/etats.js';
-import { elementsDuKit, pretOuvertDe, verifierPretPossible } from '../../domain/kit.js';
+import { elementsDuKit, pretOuvertDe, trierGroupe, verifierPretPossible } from '../../domain/kit.js';
 import { messageErreur } from '../../lib/erreurs.js';
 import { formaterCode } from '../../domain/codes.js';
 import ChampGuide from '../ChampGuide.jsx';
@@ -30,7 +30,7 @@ export default function BlocPret({ objet, objets, prets, actions, emprunteurs, o
   const [occupe, setOccupe] = useState(false);
 
   const pret = pretOuvertDe(prets, objet.id);
-  const groupe = pret ? prets.filter((p) => p.groupe_id === pret.groupe_id && !p.retour_le) : [];
+  const groupe = pret ? trierGroupe(prets.filter((p) => p.groupe_id === pret.groupe_id && !p.retour_le)) : [];
   const possible = verifierPretPossible(objet, objets, prets);
   const elements = elementsDuKit(objets, objet.id);
 
@@ -84,7 +84,7 @@ export default function BlocPret({ objet, objets, prets, actions, emprunteurs, o
       {actions.emprunter && (
         <div className="actions">
           <button className="plai-btn btn-orange" disabled={occupe}
-            onClick={() => agir(() => emprunter(objet.id, echeance, commentaire.trim() || null), `Emprunt enregistré : à rendre le ${echeance}.`)}>
+            onClick={() => agir(() => emprunter(objet.id, echeance, commentaire.trim() || null), `Emprunt enregistré : à rendre le ${dateLongue(echeance)}.`)}>
             Emprunter pour moi
           </button>
         </div>
@@ -117,7 +117,7 @@ export default function BlocPret({ objet, objets, prets, actions, emprunteurs, o
                 const id = await choisirEmprunteur();
                 await preter(objet.id, id, echeance, commentaire.trim() || null);
                 setEmprunteurId(''); setLibelleNouveau('');
-              }, `Prêt enregistré : à rendre le ${echeance}.`)}>
+              }, `Prêt enregistré : à rendre le ${dateLongue(echeance)}.`)}>
               Enregistrer le prêt
             </button>
           </div>
@@ -172,7 +172,7 @@ export default function BlocPret({ objet, objets, prets, actions, emprunteurs, o
             <div className="bloc-action">
               <input id="prolonger" type="date" aria-describedby="prolonger-aide" className="plai-input" min={dateIso(aujourdhui)} max={max}
                 value={nouvelleEcheance} onChange={(e) => setNouvelleEcheance(e.target.value)} />
-              <button className="plai-btn-ghost" disabled={occupe} onClick={() => agir(() => prolonger(pret.id, nouvelleEcheance), `Prêt prolongé jusqu'au ${nouvelleEcheance}.`)}>Prolonger</button>
+              <button className="plai-btn-ghost" disabled={occupe} onClick={() => agir(() => prolonger(pret.id, nouvelleEcheance), `Prêt prolongé jusqu'au ${dateLongue(nouvelleEcheance)}.`)}>Prolonger</button>
             </div>
           </ChampGuide>
         </div>

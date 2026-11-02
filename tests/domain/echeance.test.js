@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dateIso, echeanceParDefaut, statutPret } from '../../src/domain/echeance.js';
+import { dateIso, echeanceParDefaut, statutPret, dateLongue } from '../../src/domain/echeance.js';
 
 const jour = (iso) => new Date(`${iso}T09:30:00`);
 
@@ -43,5 +43,12 @@ describe('statutPret', () => {
   it('ignore l\'heure de la journée', () => {
     const tard = new Date('2026-11-05T23:59:00');
     expect(statutPret({ echeance: '2026-11-05' }, tard).niveau).toBe('bientot');
+  });
+});
+
+describe('dateLongue', () => {
+  it('écrit la date en français, avec le jour de la semaine', () => {
+    expect(dateLongue('2026-11-09')).toBe('lundi 9 novembre');
+    expect(dateLongue('2026-11-12')).toBe('jeudi 12 novembre');
   });
 });

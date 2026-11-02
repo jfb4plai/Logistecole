@@ -170,6 +170,25 @@ describe('Fiche : prêt', () => {
   });
 });
 
+describe('Fiche : retour d’un kit', () => {
+  it('liste le kit en premier puis ses éléments, même si la base les renvoie dans le désordre', async () => {
+    ctx.role = 'emprunteur';
+    ctx.donnees.prets = [pret('p2', T1), pret('p1', K)];
+    fiche('KKKK2222');
+    await screen.findByText(/Prêté à prof@ecole.be/);
+    const noms = screen.getAllByRole('checkbox').map((c) => c.closest('label').textContent);
+    expect(noms[0]).toMatch(/^Valise de tablettes/);
+    expect(noms[1]).toMatch(/^Tablette 1/);
+  });
+  it('confirme l’emprunt avec une date lisible, pas en AAAA-MM-JJ', async () => {
+    ctx.role = 'emprunteur';
+    fiche('PPPP2222');
+    await screen.findByText('Disponible.');
+    fireEvent.click(screen.getByRole('button', { name: 'Emprunter pour moi' }));
+    expect(await screen.findByRole('status')).toHaveTextContent(/Emprunt enregistré : à rendre le [a-zéû]+ \d{1,2} [a-zéû]+\./);
+  });
+});
+
 describe('Fiche : volume de données', () => {
   it('ne charge que les prêts ouverts (sinon, après un an, les prêts récents seraient coupés par la limite de lignes)', async () => {
     fiche('PPPP2222');

@@ -26,7 +26,7 @@ export function nettoyerPourPdf(texte) {
 export async function genererPdfEtiquettes(objets, orgNom, baseUrl) {
   const [{ jsPDF }, qrModule] = await Promise.all([import('jspdf'), import('qrcode')]);
   const QRCode = qrModule.default ?? qrModule;
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   const cellules = calculerPlanche();
 
   for (let i = 0; i < objets.length; i++) {
@@ -39,7 +39,7 @@ export async function genererPdfEtiquettes(objets, orgNom, baseUrl) {
 
     const qr = await QRCode.toDataURL(`${baseUrl}/o/${o.code}`, { margin: 1, width: 256, errorCorrectionLevel: 'M' });
     const taille = 26;
-    doc.addImage(qr, 'PNG', x + 2, y + (h - taille) / 2, taille, taille);
+    doc.addImage(qr, 'PNG', x + 2, y + (h - taille) / 2, taille, taille, undefined, 'FAST');
 
     const tx = x + taille + 5;
     const largeurTexte = w - taille - 7;

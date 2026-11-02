@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { racines, elementsDuKit, pretOuvertDe, disponibilite, verifierPretPossible, pretsEnCours } from '../../src/domain/kit.js';
+import { racines, elementsDuKit, pretOuvertDe, disponibilite, verifierPretPossible, pretsEnCours, trierGroupe } from '../../src/domain/kit.js';
 
 const objets = [
   { id: 'K', nom: 'Valise', parent_id: null, etat: 'bon', consommable: false },
@@ -62,5 +62,22 @@ describe('pretsEnCours (revue finale : un élément non rendu ne doit pas dispar
     const rendu = { ...ouvert('p9', 'X', 'g9'), retour_le: '2026-10-01T10:00:00Z' };
     const r = pretsEnCours([ouvert('p4', 'P', 'g2'), ouvert('p3', 'T2', 'g1', 'K'), rendu]);
     expect(r.map((x) => [x.id, x.manquant])).toEqual([['p4', false], ['p3', true]]);
+  });
+});
+
+describe('trierGroupe (la liste de retour doit commencer par le kit, puis ses éléments dans l’ordre)', () => {
+  const p = (id, nom, parent = null) => ({ id, logi_objets: { nom, parent_id: parent } });
+  it('met la racine en premier puis les éléments par nom, quel que soit l’ordre reçu', () => {
+    const r = trierGroupe([p('3', 'Tablette 3', 'K'), p('1', 'Tablette 1', 'K'), p('k', 'Valise'), p('2', 'Tablette 2', 'K')]);
+    expect(r.map((x) => x.logi_objets.nom)).toEqual(['Valise', 'Tablette 1', 'Tablette 2', 'Tablette 3']);
+  });
+  it('trie les numéros dans l’ordre naturel (Tablette 2 avant Tablette 10)', () => {
+    const r = trierGroupe([p('10', 'Tablette 10', 'K'), p('2', 'Tablette 2', 'K'), p('k', 'Valise')]);
+    expect(r.map((x) => x.logi_objets.nom)).toEqual(['Valise', 'Tablette 2', 'Tablette 10']);
+  });
+  it('ne modifie pas le tableau d’origine', () => {
+    const a = [p('2', 'B', 'K'), p('k', 'A')];
+    trierGroupe(a);
+    expect(a[0].id).toBe('2');
   });
 });

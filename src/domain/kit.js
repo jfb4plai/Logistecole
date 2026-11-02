@@ -33,3 +33,13 @@ export function pretsEnCours(prets) {
   }
   return resultat;
 }
+
+// Liste de retour : le kit d'abord, puis ses éléments dans l'ordre naturel (Tablette 2 avant Tablette 10).
+export function trierGroupe(prets) {
+  return [...prets].sort((a, b) => {
+    const ra = a.logi_objets?.parent_id ? 1 : 0;
+    const rb = b.logi_objets?.parent_id ? 1 : 0;
+    if (ra !== rb) return ra - rb;
+    return String(a.logi_objets?.nom ?? '').localeCompare(String(b.logi_objets?.nom ?? ''), 'fr', { numeric: true });
+  });
+}
