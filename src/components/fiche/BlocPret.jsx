@@ -62,7 +62,7 @@ export default function BlocPret({ objet, objets, prets, actions, emprunteurs, o
       {elements.length > 0 && (
         <p className="champ-aide">
           Kit de {elements.length} élément{elements.length > 1 ? 's' : ''} : {elements.map((e) => e.nom).join(', ')}.
-          {possible.ok && possible.exclus.length > 0 && ` Ne seront pas prêtés (hors service ou déjà sortis) : ${possible.exclus.join(', ')}.`}
+          {possible.ok && possible.exclus.length > 0 && ` Ne seront pas prêtés (hors service ou déjà prêtés) : ${possible.exclus.join(', ')}.`}
         </p>
       )}
       {erreur && <p className="plai-error" role="alert">{erreur}</p>}

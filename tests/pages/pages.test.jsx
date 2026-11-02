@@ -117,7 +117,7 @@ describe('Fiche : prêt', () => {
     fiche('KKKK2222');
     expect(await screen.findByText('Disponible.')).toBeInTheDocument();
     expect(await screen.findByText(/Kit de 2 éléments/)).toBeInTheDocument();
-    expect(screen.getByText(/Ne seront pas prêtés .*Tablette 2/)).toBeInTheDocument();
+    expect(screen.getByText(/Ne seront pas prêtés \(hors service ou déjà prêtés\) : Tablette 2/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/Initiales, code ou nom/), { target: { value: 'M.D.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer le prêt' }));
     await waitFor(() => expect(pretsApi.preter).toHaveBeenCalled());
