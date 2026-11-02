@@ -1,0 +1,1 @@
+export const supabase = { auth: { signOut: () => { try { sessionStorage.removeItem('demoRole'); } catch { /* sans stockage */ } window.location.reload(); }, getSession: async () => ({ data: { session: null } }) } };

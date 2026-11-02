@@ -36,7 +36,12 @@ const vide = (v) => v === '' || v == null;
 
 // Dates : objet Date (cellule Excel), AAAA-MM-JJ, JJ/MM/AAAA ou numéro de série Excel.
 function versIso(v) {
-  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : dateIso(v);
+  if (v instanceof Date) {
+    if (Number.isNaN(v.getTime())) return null;
+    // Les cellules Excel arrivent en minuit UTC : on lit alors la date UTC, sinon la date locale.
+    const minuitUtc = v.getUTCHours() === 0 && v.getUTCMinutes() === 0 && v.getUTCSeconds() === 0;
+    return minuitUtc ? v.toISOString().slice(0, 10) : dateIso(v);
+  }
   if (typeof v === 'number') return dateIso(new Date(Date.UTC(1899, 11, 30) + v * 86400000));
   const t = String(v).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
