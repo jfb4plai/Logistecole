@@ -121,3 +121,14 @@ Un encart sur l'accueil indique ce qui n'existe pas encore (prêts, réservation
 ## 10. Limites à dire clairement aux utilisateurs
 
 Pas de prêt, réservation, notification ni accès emprunteur dans ce sous-projet ; pas de mode hors ligne ; pas d'application native ; pas de RFID ni de comptabilité.
+
+## 11. Décisions pour les sous-projets suivants (JF, 2026-11-02)
+
+Hors périmètre du socle, à reprendre dans la spec du sous-projet 2 (prêts) :
+
+- **Emprunt par l'enseignant lui-même, par smartphone** : l'enseignant approche son téléphone de l'étiquette (NFC) ou scanne le QR, ouvre la fiche et emprunte en un geste.
+- **Identification : option A, compte personnel** invité par l'administrateur (lien de connexion du socle). Invitation en lot par liste d'adresses. Le lien emprunteur -> compte passe par `logi_emprunteurs.compte_id` (déjà prévu). Les comptes enseignants avancent donc du sous-projet 4 au sous-projet 2.
+- **Date de retour** : échéance fixée au prêt (valeur par défaut proposée au gestionnaire), visible sur la fiche pour l'emprunteur et dans une page « Mes emprunts ». Rappels automatiques (e-mail, notification) : hors périmètre sans accord de JF.
+- **Liens utiles** : liste d'adresses (mode d'emploi, vidéo, fiche) rattachée à l'objet.
+- **Kit** : un objet principal lié à ses éléments (valise et 16 tablettes, tablette et chargeur). Emprunter le kit emprunte tout ; le retour vérifie que rien ne manque.
+- **Puce NFC optionnelle** : même contenu que le QR (l'adresse `/o/<code>`), écrite depuis Android avec `nfc.js` du garde-manger (écriture d'un enregistrement `url`, lecture par scan). L'iPhone lit mais n'écrit pas. QR gratuit par défaut ; puce NFC à moins d'1 EUR selon JF (prix non vérifié par Claude). Surfaces métalliques non testées.
