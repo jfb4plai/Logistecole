@@ -11,9 +11,9 @@ export default defineConfig({
   server: { port: 5181 },
   resolve: {
     alias: [
-      { find: /^.*\/data\/(objets|prets|referentiels|membres|importer)\.js$/, replacement: `${demo('')}$1.js` },
+      { find: /^.*\/data\/(objets|prets|referentiels|membres|importer|journal)\.js$/, replacement: `${demo('')}$1.js` },
       // Les modules de src/data s'importent aussi entre eux en relatif (./objets.js).
-      { find: /^\.\/(objets|prets|referentiels|membres|importer)\.js$/, replacement: `${demo('')}$1.js` },
+      { find: /^\.\/(objets|prets|referentiels|membres|importer|journal)\.js$/, replacement: `${demo('')}$1.js` },
       { find: /^.*\/lib\/(auth|org)\.jsx$/, replacement: `${demo('')}$1.jsx` },
       { find: /^.*\/lib\/supabase\.js$/, replacement: demo('supabase.js') },
     ],

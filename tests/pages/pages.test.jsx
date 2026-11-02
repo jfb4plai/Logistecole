@@ -36,6 +36,9 @@ vi.mock('../../src/data/prets.js', () => ({
   signaler: vi.fn(async () => {}), reparer: vi.fn(async () => {}), ajusterStock: vi.fn(async () => 7),
   reserver: vi.fn(async () => 'r'), annulerReservation: vi.fn(async () => {}),
 }));
+vi.mock('../../src/data/journal.js', () => ({
+  listerJournal: vi.fn(async (_org, apres) => (apres ? [] : ctx.donnees.journal ?? [])),
+}));
 vi.mock('../../src/data/referentiels.js', () => ({
   listerReferentiel: async (t) => (t === 'logi_categories' ? [{ id: 'c1', nom: 'Tablettes' }] : [{ id: 'e1', nom: 'Salle 12', parent_id: null }, { id: 'e2', nom: 'Armoire A', parent_id: 'e1' }]),
   ajouterReferentiel: vi.fn(), renommerReferentiel: vi.fn(), supprimerReferentiel: vi.fn(),
@@ -62,6 +65,8 @@ import Suivi from '../../src/pages/Suivi.jsx';
 import AdminMembres from '../../src/pages/AdminMembres.jsx';
 import Import from '../../src/pages/Import.jsx';
 import Nav from '../../src/components/Nav.jsx';
+import Journal from '../../src/pages/Journal.jsx';
+import * as journalApi from '../../src/data/journal.js';
 
 const base = { org_id: 'o1', etat: 'bon', parent_id: null, consommable: false, notes: null, photo_path: null, categorie_id: 'c1', emplacement_id: 'e1',
   logi_categories: { nom: 'Tablettes' }, logi_emplacements: { nom: 'Salle 12' }, liens: [], quantite: null, seuil_min: null };
@@ -186,6 +191,93 @@ describe('Fiche : retour d’un kit', () => {
     await screen.findByText('Disponible.');
     fireEvent.click(screen.getByRole('button', { name: 'Emprunter pour moi' }));
     expect(await screen.findByRole('status')).toHaveTextContent(/Emprunt enregistré : à rendre le [a-zéû]+ \d{1,2} [a-zéû]+\./);
+  });
+});
+
+describe('Fiche : état au retour, objet par objet', () => {
+  const T1neuf = { ...T1, etat: 'neuf' };
+  beforeEach(() => {
+    ctx.role = 'emprunteur';
+    ctx.donnees.objets = [K, T1neuf, T2, P, C];
+    ctx.donnees.prets = [pret('p1', K), pret('p2', T1neuf)];
+  });
+  it('propose par défaut l’état au départ de chaque élément, « Neuf » compris, et un appel par état', async () => {
+    fiche('KKKK2222');
+    await screen.findByText(/Prêté à prof@ecole.be/);
+    expect(screen.getByLabelText(/État de Valise de tablettes/)).toHaveValue('bon');
+    expect(screen.getByLabelText(/État de Tablette 1/)).toHaveValue('neuf');
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer le retour' }));
+    await waitFor(() => expect(pretsApi.rendre).toHaveBeenCalledTimes(2));
+    expect(pretsApi.rendre.mock.calls.map((c) => [c[0], c[1]])).toEqual([[['p1'], 'bon'], [['p2'], 'neuf']]);
+  });
+  it('ne propose jamais un état meilleur que l’état actuel (pas « Neuf » pour un objet en bon état)', async () => {
+    fiche('KKKK2222');
+    await screen.findByText(/Prêté à prof@ecole.be/);
+    const options = (nom) => [...screen.getByLabelText(nom).options].map((o) => o.textContent);
+    expect(options(/État de Valise de tablettes/)).toEqual(['Bon état', 'Usé', 'Défectueux', 'Perdu']);
+    expect(options(/État de Tablette 1/)).toEqual(['Neuf', 'Bon état', 'Usé', 'Défectueux', 'Perdu']);
+  });
+  it('un élément déclaré défectueux part dans son propre appel', async () => {
+    fiche('KKKK2222');
+    await screen.findByText(/Prêté à prof@ecole.be/);
+    fireEvent.change(screen.getByLabelText(/État de Tablette 1/), { target: { value: 'defectueux' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer le retour' }));
+    await waitFor(() => expect(pretsApi.rendre).toHaveBeenCalledTimes(2));
+    expect(pretsApi.rendre.mock.calls.map((c) => [c[0], c[1]])).toEqual([[['p1'], 'bon'], [['p2'], 'defectueux']]);
+  });
+  it('un objet seul : un seul choix d’état, sans case à cocher', async () => {
+    ctx.donnees.prets = [pret('p1', P)];
+    fiche('PPPP2222');
+    await screen.findByText(/Prêté à prof@ecole.be/);
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+    expect(screen.getByLabelText(/État au retour/)).toHaveValue('bon');
+  });
+});
+
+describe('Journal de l’organisation', () => {
+  const evt = (id, type, jour, extra = {}) => ({ id, type, quand: `${jour}T10:00:00`, avant: null, apres: null, commentaire: null, auteur_email: 'jf@ecole.be', logi_objets: { nom: 'Valise de tablettes', code: 'KKKK2222' }, ...extra });
+  beforeEach(() => {
+    const auj = new Date().toISOString().slice(0, 10);
+    ctx.donnees.journal = [
+      evt(3, 'pret', auj, { apres: 'M.D.', commentaire: 'jusqu’au 09/11/2026' }),
+      evt(2, 'panne', auj, { commentaire: 'écran noir', logi_objets: { nom: 'Projecteur', code: 'PPPP2222' } }),
+      evt(1, 'creation', '2026-10-01', { apres: 'Valise de tablettes' }),
+    ];
+  });
+  it('liste les événements de tous les objets, regroupés par jour, avec un lien vers la fiche', async () => {
+    monter(<Journal />);
+    expect(await screen.findByText('Aujourd’hui')).toBeInTheDocument();
+    expect(screen.getByText(/Prêté à M.D./)).toBeInTheDocument();
+    expect(screen.getByText(/Problème signalé : écran noir/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Projecteur' })).toHaveAttribute('href', '/o/PPPP2222');
+  });
+  it('filtre par catégorie et par recherche', async () => {
+    monter(<Journal />);
+    await screen.findByText(/Prêté à M.D./);
+    fireEvent.change(screen.getByLabelText('Catégorie'), { target: { value: 'pannes' } });
+    expect(screen.queryByText(/Prêté à M.D./)).not.toBeInTheDocument();
+    expect(screen.getByText(/Problème signalé/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Catégorie'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Rechercher'), { target: { value: 'projecteur' } });
+    expect(screen.queryByText(/Prêté à M.D./)).not.toBeInTheDocument();
+    expect(screen.getByText(/Problème signalé/)).toBeInTheDocument();
+  });
+  it('message clair quand il n’y a rien', async () => {
+    ctx.donnees.journal = [];
+    monter(<Journal />);
+    expect(await screen.findByText(/Aucun événement/)).toBeInTheDocument();
+  });
+  it('réservé aux gestionnaires : un enseignant est renvoyé vers Mes emprunts', async () => {
+    ctx.role = 'emprunteur';
+    monter(<Journal />);
+    expect(await screen.findByText(/réservé aux gestionnaires/)).toBeInTheDocument();
+    expect(journalApi.listerJournal).not.toHaveBeenCalled();
+  });
+  it('« Charger plus » apparaît quand la page est pleine', async () => {
+    ctx.donnees.journal = Array.from({ length: 200 }, (_, i) => evt(500 - i, 'note', '2026-10-02', { commentaire: `n${i}` }));
+    monter(<Journal />);
+    fireEvent.click(await screen.findByRole('button', { name: /Charger plus/ }));
+    await waitFor(() => expect(journalApi.listerJournal).toHaveBeenLastCalledWith('o1', 301));
   });
 });
 
@@ -384,12 +476,12 @@ describe('Navigation', () => {
     ctx.role = 'emprunteur';
     monter(<Nav />);
     expect(screen.getByRole('link', { name: 'Mes emprunts' })).toBeInTheDocument();
-    for (const nom of ['Suivi', 'Ajouter', 'Administration', 'Étiquettes']) expect(screen.queryByRole('link', { name: nom })).not.toBeInTheDocument();
+    for (const nom of ['Suivi', 'Journal', 'Ajouter', 'Administration', 'Étiquettes']) expect(screen.queryByRole('link', { name: nom })).not.toBeInTheDocument();
   });
   it('un administrateur voit tout', () => {
     ctx.role = 'admin';
     monter(<Nav />);
-    for (const nom of ['Matériel', 'Scanner', 'Mes emprunts', 'Suivi', 'Étiquettes', 'Ajouter', 'Administration']) expect(screen.getByRole('link', { name: nom })).toBeInTheDocument();
+    for (const nom of ['Matériel', 'Scanner', 'Mes emprunts', 'Suivi', 'Journal', 'Étiquettes', 'Ajouter', 'Administration']) expect(screen.getByRole('link', { name: nom })).toBeInTheDocument();
   });
 });
 

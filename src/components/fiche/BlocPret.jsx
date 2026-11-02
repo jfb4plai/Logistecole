@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { emprunter, preter, rendre, prolonger, creerEmprunteur } from '../../data/prets.js';
 import { dateIso, dateLongue, echeanceParDefaut, statutPret } from '../../domain/echeance.js';
-import { ETATS_RETOUR } from '../../domain/etats.js';
-import { elementsDuKit, pretOuvertDe, trierGroupe, verifierPretPossible } from '../../domain/kit.js';
+import { etatsRetourPossibles } from '../../domain/etats.js';
+import { elementsDuKit, grouperParEtat, pretOuvertDe, trierGroupe, verifierPretPossible } from '../../domain/kit.js';
 import { messageErreur } from '../../lib/erreurs.js';
 import { formaterCode } from '../../domain/codes.js';
 import ChampGuide from '../ChampGuide.jsx';
@@ -22,7 +22,7 @@ export default function BlocPret({ objet, objets, prets, actions, emprunteurs, o
   const [typeNouveau, setTypeNouveau] = useState('enseignant');
   const [libelleNouveau, setLibelleNouveau] = useState('');
   const [absents, setAbsents] = useState(new Set());
-  const [etatRetour, setEtatRetour] = useState('bon');
+  const [etatsChoisis, setEtatsChoisis] = useState({}); // prêt -> état choisi ; absent = état actuel de l'objet
   const [commentaireRetour, setCommentaireRetour] = useState('');
   const [nouvelleEcheance, setNouvelleEcheance] = useState(echeanceParDefaut(aujourdhui, 7));
   const [erreur, setErreur] = useState('');
@@ -32,6 +32,8 @@ export default function BlocPret({ objet, objets, prets, actions, emprunteurs, o
   const pret = pretOuvertDe(prets, objet.id);
   const groupe = pret ? trierGroupe(prets.filter((p) => p.groupe_id === pret.groupe_id && !p.retour_le)) : [];
   const possible = verifierPretPossible(objet, objets, prets);
+  const etatActuel = (p) => objets.find((o) => o.id === p.objet_id)?.etat ?? 'bon';
+  const etatChoisi = (p) => etatsChoisis[p.id] ?? etatActuel(p);
   const elements = elementsDuKit(objets, objet.id);
 
   async function agir(fn, message) {
@@ -127,37 +129,45 @@ export default function BlocPret({ objet, objets, prets, actions, emprunteurs, o
       {actions.rendre && pret && (
         <div className="bloc-sous">
           <h3>Retour</h3>
-          {groupe.length > 1 && (
+          {groupe.length > 1 ? (
             <fieldset className="liste-cases">
-              <legend className="plai-label">Éléments revenus</legend>
+              <legend className="plai-label">Éléments revenus et leur état</legend>
               <ul className="liste-cases">
                 {groupe.map((p) => (
-                  <li key={p.id}>
+                  <li key={p.id} className="ligne-retour">
                     <label>
                       <input type="checkbox" checked={!absents.has(p.id)}
                         onChange={() => setAbsents((s) => { const n = new Set(s); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })} />
                       <span>{p.logi_objets?.nom} <span className="code-court">({formaterCode(p.logi_objets?.code ?? '')})</span></span>
                     </label>
+                    <select aria-label={`État de ${p.logi_objets?.nom}`} className="plai-input select-etat" disabled={absents.has(p.id)}
+                      value={etatChoisi(p)} onChange={(e) => setEtatsChoisis((c) => ({ ...c, [p.id]: e.target.value }))}>
+                      {etatsRetourPossibles(etatActuel(p)).map((e) => <option key={e.value} value={e.value}>{e.label}</option>)}
+                    </select>
                   </li>
                 ))}
               </ul>
-              <p className="champ-aide">Un élément non coché reste prêté et la fiche du kit note qu'il manque.</p>
+              <p className="champ-aide">L'état proposé est celui du départ : changez-le seulement pour un élément abîmé. Un élément non coché reste prêté et la fiche du kit note qu'il manque.</p>
             </fieldset>
+          ) : (
+            <ChampGuide id="etat-retour" label="État au retour" aide="L'état proposé est celui du départ. Choisissez « Usé », « Défectueux » ou « Perdu » si l'objet est revenu abîmé : cela change aussi son état. Un objet ne revient jamais en meilleur état qu'au départ.">
+              <select id="etat-retour" aria-describedby="etat-retour-aide" className="plai-input" value={etatChoisi(groupe[0])}
+                onChange={(e) => setEtatsChoisis({ [groupe[0].id]: e.target.value })}>
+                {etatsRetourPossibles(etatActuel(groupe[0])).map((e) => <option key={e.value} value={e.value}>{e.label}</option>)}
+              </select>
+            </ChampGuide>
           )}
-          <ChampGuide id="etat-retour" label="État au retour" aide="« Usé », « défectueux » ou « perdu » change aussi l'état de l'objet. « Bon état » le laisse tel qu'il était.">
-            <select id="etat-retour" aria-describedby="etat-retour-aide" className="plai-input" value={etatRetour} onChange={(e) => setEtatRetour(e.target.value)}>
-              {ETATS_RETOUR.map((e) => <option key={e.value} value={e.value}>{e.label}</option>)}
-            </select>
-          </ChampGuide>
-          <ChampGuide id="commentaire-retour" label="Remarque au retour (facultatif)" aide="Ce que vous constatez : rayure, câble manquant, tout est en ordre.">
+          <ChampGuide id="commentaire-retour" label="Remarque au retour (facultatif)" aide="Ce que vous constatez : rayure, câble manquant, tout est en ordre. Elle est gardée avec chaque élément rendu.">
             <input id="commentaire-retour" aria-describedby="commentaire-retour-aide" className="plai-input" maxLength={300}
               placeholder="Ex. : écran fissuré en bas à gauche" value={commentaireRetour} onChange={(e) => setCommentaireRetour(e.target.value)} />
           </ChampGuide>
           <div className="actions">
             <button className="plai-btn" disabled={occupe || groupe.every((p) => absents.has(p.id))}
               onClick={() => agir(async () => {
-                await rendre(groupe.filter((p) => !absents.has(p.id)).map((p) => p.id), etatRetour, commentaireRetour.trim() || null);
-                setAbsents(new Set()); setCommentaireRetour('');
+                // L'état est choisi par élément ; la base reçoit un retour par état choisi.
+                const lignes = groupe.filter((p) => !absents.has(p.id)).map((p) => ({ id: p.id, etat: etatChoisi(p) }));
+                for (const g of grouperParEtat(lignes)) await rendre(g.ids, g.etat, commentaireRetour.trim() || null);
+                setAbsents(new Set()); setEtatsChoisis({}); setCommentaireRetour('');
               }, 'Retour enregistré.')}>
               Enregistrer le retour
             </button>

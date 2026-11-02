@@ -26,6 +26,7 @@ export default function Nav() {
         <NavLink to="/scan">Scanner</NavLink>
         <NavLink to="/emprunts">Mes emprunts</NavLink>
         {role !== 'emprunteur' && <NavLink to="/suivi">Suivi</NavLink>}
+        {role !== 'emprunteur' && <NavLink to="/journal">Journal</NavLink>}
         {peutEcrire(role) && <NavLink to="/etiquettes">Étiquettes</NavLink>}
         {peutEcrire(role) && <NavLink to="/nouveau">Ajouter</NavLink>}
         {estAdmin(role) && <NavLink to="/admin">Administration</NavLink>}

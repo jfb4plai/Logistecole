@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { racines, elementsDuKit, pretOuvertDe, disponibilite, verifierPretPossible, pretsEnCours, trierGroupe } from '../../src/domain/kit.js';
+import { racines, elementsDuKit, pretOuvertDe, disponibilite, verifierPretPossible, pretsEnCours, trierGroupe, grouperParEtat } from '../../src/domain/kit.js';
 
 const objets = [
   { id: 'K', nom: 'Valise', parent_id: null, etat: 'bon', consommable: false },
@@ -79,5 +79,15 @@ describe('trierGroupe (la liste de retour doit commencer par le kit, puis ses é
     const a = [p('2', 'B', 'K'), p('k', 'A')];
     trierGroupe(a);
     expect(a[0].id).toBe('2');
+  });
+});
+
+describe('grouperParEtat (un appel de retour par état choisi)', () => {
+  it('regroupe les prêts par état, dans l’ordre de première apparition', () => {
+    const r = grouperParEtat([{ id: 'a', etat: 'neuf' }, { id: 'b', etat: 'bon' }, { id: 'c', etat: 'neuf' }, { id: 'd', etat: 'defectueux' }]);
+    expect(r).toEqual([{ etat: 'neuf', ids: ['a', 'c'] }, { etat: 'bon', ids: ['b'] }, { etat: 'defectueux', ids: ['d'] }]);
+  });
+  it('liste vide', () => {
+    expect(grouperParEtat([])).toEqual([]);
   });
 });

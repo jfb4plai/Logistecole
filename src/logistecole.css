@@ -104,3 +104,15 @@ fieldset.liste-cases { border: 1px solid var(--border); border-radius: var(--rad
 
 /* Sur téléphone, l'en-tête (3 lignes) ne reste pas collé en haut : il prendrait un sixième de l'écran */
 @media (max-width: 600px) { .nav-logi { position: static; } }
+
+/* Retour d'un kit : une case et un état par élément */
+.ligne-retour { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.ligne-retour label { flex: 1 1 220px; }
+.select-etat { flex: 0 1 170px; width: auto; }
+
+/* Journal de l'organisation */
+.journal { list-style: none; border-left: 3px solid var(--teal-border); padding-left: 14px; margin-bottom: 1rem; }
+.journal li { display: flex; gap: 12px; margin-bottom: 10px; }
+.journal-heure { color: var(--text2); min-width: 3.5rem; font-variant-numeric: tabular-nums; }
+.journal-texte { flex: 1; overflow-wrap: anywhere; }
+.journal .auteur { color: var(--text2); display: block; }

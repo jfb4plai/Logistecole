@@ -275,7 +275,7 @@ reset role;
 
 -- ── Lecture des prêts en cours pour le suivi ───────────────────────────
 do $t$ begin
-  assert (select count(*) from logi_prets where retour_le is null and org_id = '11111111-1111-1111-1111-111111111111') = 4, 'quatre prêts ouverts à la fin : racine + 2 tablettes + projecteur';
+  assert (select count(*) from logi_prets where retour_le is null and org_id = '11111111-1111-1111-1111-111111111111') = 4, 'quatre prêts ouverts à ce stade : racine + 2 tablettes + projecteur';
 end $t$;
 
 -- ── Revue finale : l'historique d'une réservation écrit l'heure belge, pas l'heure UTC ──
@@ -321,7 +321,26 @@ do $t$ begin
   perform logi_signaler('d0000000-0000-0000-0000-0000000000f3', 'Haut-parleur muet');
   assert (select etat from logi_objets where id = 'd0000000-0000-0000-0000-0000000000f3') = 'defectueux', 'un objet neuf peut être signalé défectueux';
 end $t$;
-select zz_echec($$select logi_rendre(array(select id from logi_prets where objet_id = 'd0000000-0000-0000-0000-0000000000f2' and retour_le is null), 'neuf')$$, array['P0001'], 'invalide');
+-- Au retour : un objet neuf peut revenir neuf (état conservé), mais aucun objet ne s'améliore
+do $t$ begin
+  perform logi_rendre(array(select id from logi_prets where objet_id = 'd0000000-0000-0000-0000-0000000000f2' and retour_le is null), 'neuf', 'jamais déballée');
+  assert (select etat from logi_objets where id = 'd0000000-0000-0000-0000-0000000000f2') = 'neuf', 'un objet neuf rendu neuf reste neuf';
+  assert exists (select 1 from logi_prets where objet_id = 'd0000000-0000-0000-0000-0000000000f2' and etat_retour = 'neuf'), 'le retour « neuf » est enregistré';
+  assert exists (select 1 from logi_historique where objet_id = 'd0000000-0000-0000-0000-0000000000f2' and type = 'retour' and apres = 'neuf'), 'le retour « neuf » est tracé';
+  perform logi_emprunter('d0000000-0000-0000-0000-0000000000f2', current_date + 3);
+  perform logi_rendre(array(select id from logi_prets where objet_id = 'd0000000-0000-0000-0000-0000000000f2' and retour_le is null), 'bon');
+  assert (select etat from logi_objets where id = 'd0000000-0000-0000-0000-0000000000f2') = 'bon', 'un objet neuf rendu « bon » est déclassé en « bon »';
+end $t$;
+reset role;
+insert into logi_objets (id, org_id, nom, code, etat) values ('d0000000-0000-0000-0000-0000000000f4', '11111111-1111-1111-1111-111111111111', 'Casque 2', 'NNNN4444', 'bon');
+select zz_comme('a0000000-0000-0000-0000-000000000004');
+select logi_emprunter('d0000000-0000-0000-0000-0000000000f4', current_date + 3);
+select zz_echec($$select logi_rendre(array(select id from logi_prets where objet_id = 'd0000000-0000-0000-0000-0000000000f4' and retour_le is null), 'neuf')$$, array['P0001'], 'améliore');
+do $t$ begin
+  assert (select etat from logi_objets where id = 'd0000000-0000-0000-0000-0000000000f4') = 'bon', 'le refus ne change rien';
+  assert exists (select 1 from logi_prets where objet_id = 'd0000000-0000-0000-0000-0000000000f4' and retour_le is null), 'le prêt reste ouvert après un retour refusé';
+end $t$;
+select zz_echec($$select logi_rendre(array(select id from logi_prets where objet_id = 'd0000000-0000-0000-0000-0000000000f4' and retour_le is null), 'excellent')$$, array['P0001'], 'invalide');
 reset role;
 
 select 'LOGISTECOLE PRETS : tous les tests passent' as resultat;
