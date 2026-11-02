@@ -7,7 +7,7 @@ import ChampGuide from '../components/ChampGuide.jsx';
 import Footer from '../components/Footer.jsx';
 
 export default function Connexion() {
-  const { session, ready } = useAuth();
+  const { session, ready, erreurLien } = useAuth();
   const loc = useLocation();
   const from = loc.state?.from ?? '/';
   const [email, setEmail] = useState('');
@@ -47,6 +47,7 @@ export default function Connexion() {
               value={email} onChange={(e) => setEmail(e.target.value)}
             />
           </ChampGuide>
+          {erreurLien && !etat.erreur && <p className="plai-error" role="alert">{erreurLien.message}</p>}
           {etat.erreur && <p className="plai-error" role="alert">{etat.erreur}</p>}
           {etat.ok && (
             <p className="plai-success" role="status">

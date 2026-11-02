@@ -1,11 +1,18 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from './supabase.js';
+import { lireErreurLien } from '../domain/authurl.js';
 
 const AuthCtx = createContext(null);
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [ready, setReady] = useState(false);
+  // Lu avant toute redirection (qui effacerait l'adresse), puis l'adresse est nettoyée.
+  const [erreurLien] = useState(() => {
+    const e = lireErreurLien(window.location.hash) ?? lireErreurLien(window.location.search);
+    if (e) window.history.replaceState(null, '', window.location.pathname);
+    return e;
+  });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -16,7 +23,7 @@ export function AuthProvider({ children }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  return <AuthCtx.Provider value={{ session, ready }}>{children}</AuthCtx.Provider>;
+  return <AuthCtx.Provider value={{ session, ready, erreurLien }}>{children}</AuthCtx.Provider>;
 }
 
 export function useAuth() {
