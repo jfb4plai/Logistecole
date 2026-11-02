@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { emprunter, preter, rendre, prolonger, creerEmprunteur } from '../../data/prets.js';
 import { dateIso, dateLongue, echeanceParDefaut, statutPret } from '../../domain/echeance.js';
 import { etatsRetourPossibles } from '../../domain/etats.js';
-import { elementsDuKit, grouperParEtat, pretOuvertDe, trierGroupe, verifierPretPossible } from '../../domain/kit.js';
+import { elementsDuKit, pretOuvertDe, trierGroupe, verifierPretPossible } from '../../domain/kit.js';
 import { messageErreur } from '../../lib/erreurs.js';
 import { formaterCode } from '../../domain/codes.js';
 import ChampGuide from '../ChampGuide.jsx';
@@ -23,7 +23,8 @@ export default function BlocPret({ objet, objets, prets, actions, emprunteurs, o
   const [libelleNouveau, setLibelleNouveau] = useState('');
   const [absents, setAbsents] = useState(new Set());
   const [etatsChoisis, setEtatsChoisis] = useState({}); // prêt -> état choisi ; absent = état actuel de l'objet
-  const [commentaireRetour, setCommentaireRetour] = useState('');
+  const [commentaireRetour, setCommentaireRetour] = useState(''); // objet seul : une remarque
+  const [remarques, setRemarques] = useState({}); // kit : une remarque par élément
   const [nouvelleEcheance, setNouvelleEcheance] = useState(echeanceParDefaut(aujourdhui, 7));
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
@@ -144,6 +145,9 @@ export default function BlocPret({ objet, objets, prets, actions, emprunteurs, o
                       value={etatChoisi(p)} onChange={(e) => setEtatsChoisis((c) => ({ ...c, [p.id]: e.target.value }))}>
                       {etatsRetourPossibles(etatActuel(p)).map((e) => <option key={e.value} value={e.value}>{e.label}</option>)}
                     </select>
+                    <input aria-label={`Remarque pour ${p.logi_objets?.nom}`} className="plai-input remarque-retour" maxLength={300} disabled={absents.has(p.id)}
+                      placeholder="Remarque (facultatif)" value={remarques[p.id] ?? ''}
+                      onChange={(e) => setRemarques((r) => ({ ...r, [p.id]: e.target.value }))} />
                   </li>
                 ))}
               </ul>
@@ -157,17 +161,23 @@ export default function BlocPret({ objet, objets, prets, actions, emprunteurs, o
               </select>
             </ChampGuide>
           )}
-          <ChampGuide id="commentaire-retour" label="Remarque au retour (facultatif)" aide="Ce que vous constatez : rayure, câble manquant, tout est en ordre. Elle est gardée avec chaque élément rendu.">
-            <input id="commentaire-retour" aria-describedby="commentaire-retour-aide" className="plai-input" maxLength={300}
-              placeholder="Ex. : écran fissuré en bas à gauche" value={commentaireRetour} onChange={(e) => setCommentaireRetour(e.target.value)} />
-          </ChampGuide>
+          {groupe.length === 1 && (
+            <ChampGuide id="commentaire-retour" label="Remarque au retour (facultatif)" aide="Ce que vous constatez : rayure, câble manquant, tout est en ordre. Elle est gardée dans l'historique de l'objet.">
+              <input id="commentaire-retour" aria-describedby="commentaire-retour-aide" className="plai-input" maxLength={300}
+                placeholder="Ex. : écran fissuré en bas à gauche" value={commentaireRetour} onChange={(e) => setCommentaireRetour(e.target.value)} />
+            </ChampGuide>
+          )}
           <div className="actions">
             <button className="plai-btn" disabled={occupe || groupe.every((p) => absents.has(p.id))}
               onClick={() => agir(async () => {
-                // L'état est choisi par élément ; la base reçoit un retour par état choisi.
-                const lignes = groupe.filter((p) => !absents.has(p.id)).map((p) => ({ id: p.id, etat: etatChoisi(p) }));
-                for (const g of grouperParEtat(lignes)) await rendre(g.ids, g.etat, commentaireRetour.trim() || null);
-                setAbsents(new Set()); setEtatsChoisis({}); setCommentaireRetour('');
+                // Un seul appel : l'état et la remarque sont choisis par élément.
+                const retours = groupe.filter((p) => !absents.has(p.id)).map((p) => ({
+                  pret: p.id,
+                  etat: etatChoisi(p),
+                  commentaire: ((groupe.length === 1 ? commentaireRetour : remarques[p.id]) ?? '').trim() || null,
+                }));
+                await rendre(retours, null);
+                setAbsents(new Set()); setEtatsChoisis({}); setRemarques({}); setCommentaireRetour('');
               }, 'Retour enregistré.')}>
               Enregistrer le retour
             </button>

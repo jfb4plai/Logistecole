@@ -116,3 +116,5 @@ fieldset.liste-cases { border: 1px solid var(--border); border-radius: var(--rad
 .journal-heure { color: var(--text2); min-width: 3.5rem; font-variant-numeric: tabular-nums; }
 .journal-texte { flex: 1; overflow-wrap: anywhere; }
 .journal .auteur { color: var(--text2); display: block; }
+
+.remarque-retour { flex: 1 1 100%; }

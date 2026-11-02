@@ -154,7 +154,7 @@ describe('Fiche : prêt', () => {
     expect(screen.getByText(/À rendre le/)).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText(/Tablette 1 \(TTTT-2224\)/)); // décoche : il manque, le code distingue les exemplaires
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer le retour' }));
-    await waitFor(() => expect(pretsApi.rendre).toHaveBeenCalledWith(['p1'], 'bon', null));
+    await waitFor(() => expect(pretsApi.rendre).toHaveBeenCalledWith([{ pret: 'p1', etat: 'bon', commentaire: null }], null));
   });
   it('autre enseignant : ne peut ni rendre ni prolonger le prêt d\'un collègue', async () => {
     ctx.role = 'emprunteur';
@@ -201,14 +201,17 @@ describe('Fiche : état au retour, objet par objet', () => {
     ctx.donnees.objets = [K, T1neuf, T2, P, C];
     ctx.donnees.prets = [pret('p1', K), pret('p2', T1neuf)];
   });
-  it('propose par défaut l’état au départ de chaque élément, « Neuf » compris, et un appel par état', async () => {
+  it('propose par défaut l’état au départ de chaque élément, « Neuf » compris, et envoie un seul retour', async () => {
     fiche('KKKK2222');
     await screen.findByText(/Prêté à prof@ecole.be/);
     expect(screen.getByLabelText(/État de Valise de tablettes/)).toHaveValue('bon');
     expect(screen.getByLabelText(/État de Tablette 1/)).toHaveValue('neuf');
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer le retour' }));
-    await waitFor(() => expect(pretsApi.rendre).toHaveBeenCalledTimes(2));
-    expect(pretsApi.rendre.mock.calls.map((c) => [c[0], c[1]])).toEqual([[['p1'], 'bon'], [['p2'], 'neuf']]);
+    await waitFor(() => expect(pretsApi.rendre).toHaveBeenCalledTimes(1));
+    expect(pretsApi.rendre.mock.calls[0][0]).toEqual([
+      { pret: 'p1', etat: 'bon', commentaire: null },
+      { pret: 'p2', etat: 'neuf', commentaire: null },
+    ]);
   });
   it('ne propose jamais un état meilleur que l’état actuel (pas « Neuf » pour un objet en bon état)', async () => {
     fiche('KKKK2222');
@@ -217,13 +220,17 @@ describe('Fiche : état au retour, objet par objet', () => {
     expect(options(/État de Valise de tablettes/)).toEqual(['Bon état', 'Usé', 'Défectueux', 'Perdu']);
     expect(options(/État de Tablette 1/)).toEqual(['Neuf', 'Bon état', 'Usé', 'Défectueux', 'Perdu']);
   });
-  it('un élément déclaré défectueux part dans son propre appel', async () => {
+  it('un état et une remarque par élément, dans un seul appel : la remarque ne se copie pas sur les autres', async () => {
     fiche('KKKK2222');
     await screen.findByText(/Prêté à prof@ecole.be/);
     fireEvent.change(screen.getByLabelText(/État de Tablette 1/), { target: { value: 'defectueux' } });
+    fireEvent.change(screen.getByLabelText(/Remarque pour Tablette 1/), { target: { value: 'écran fissuré' } });
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer le retour' }));
-    await waitFor(() => expect(pretsApi.rendre).toHaveBeenCalledTimes(2));
-    expect(pretsApi.rendre.mock.calls.map((c) => [c[0], c[1]])).toEqual([[['p1'], 'bon'], [['p2'], 'defectueux']]);
+    await waitFor(() => expect(pretsApi.rendre).toHaveBeenCalledTimes(1));
+    expect(pretsApi.rendre.mock.calls[0][0]).toEqual([
+      { pret: 'p1', etat: 'bon', commentaire: null },
+      { pret: 'p2', etat: 'defectueux', commentaire: 'écran fissuré' },
+    ]);
   });
   it('un objet seul : un seul choix d’état, sans case à cocher', async () => {
     ctx.donnees.prets = [pret('p1', P)];
@@ -231,6 +238,9 @@ describe('Fiche : état au retour, objet par objet', () => {
     await screen.findByText(/Prêté à prof@ecole.be/);
     expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
     expect(screen.getByLabelText(/État au retour/)).toHaveValue('bon');
+    fireEvent.change(screen.getByLabelText(/Remarque au retour/), { target: { value: 'tout est en ordre' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer le retour' }));
+    await waitFor(() => expect(pretsApi.rendre).toHaveBeenCalledWith([{ pret: 'p1', etat: 'bon', commentaire: 'tout est en ordre' }], null));
   });
 });
 

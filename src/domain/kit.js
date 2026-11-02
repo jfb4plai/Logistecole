@@ -43,13 +43,3 @@ export function trierGroupe(prets) {
     return String(a.logi_objets?.nom ?? '').localeCompare(String(b.logi_objets?.nom ?? ''), 'fr', { numeric: true });
   });
 }
-
-// Regroupe des {id, etat} par état (un appel de retour par état choisi), dans l'ordre de première apparition.
-export function grouperParEtat(lignes) {
-  const groupes = new Map();
-  for (const l of lignes) {
-    if (!groupes.has(l.etat)) groupes.set(l.etat, []);
-    groupes.get(l.etat).push(l.id);
-  }
-  return [...groupes].map(([etat, ids]) => ({ etat, ids }));
-}

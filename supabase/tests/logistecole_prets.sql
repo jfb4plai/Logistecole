@@ -343,5 +343,40 @@ end $t$;
 select zz_echec($$select logi_rendre(array(select id from logi_prets where objet_id = 'd0000000-0000-0000-0000-0000000000f4' and retour_le is null), 'excellent')$$, array['P0001'], 'invalide');
 reset role;
 
+-- ── Retour détaillé : un seul appel, un état et une remarque par élément, un seul constat d'incomplétude ──
+insert into logi_objets (id, org_id, nom, code) values
+  ('d0000000-0000-0000-0000-0000000000f5', '11111111-1111-1111-1111-111111111111', 'Kit Z', 'ZZZZ2222');
+insert into logi_objets (id, org_id, nom, code, parent_id, etat) values
+  ('d0000000-0000-0000-0000-0000000000f6', '11111111-1111-1111-1111-111111111111', 'Z1', 'ZZZZ3333', 'd0000000-0000-0000-0000-0000000000f5', 'neuf'),
+  ('d0000000-0000-0000-0000-0000000000f7', '11111111-1111-1111-1111-111111111111', 'Z2', 'ZZZZ4444', 'd0000000-0000-0000-0000-0000000000f5', 'bon');
+select zz_comme('a0000000-0000-0000-0000-000000000004');
+do $t$ begin
+  perform logi_emprunter('d0000000-0000-0000-0000-0000000000f5', current_date + 3);
+  perform logi_rendre_detail((
+    select jsonb_agg(jsonb_build_object(
+      'pret', id,
+      'etat', case objet_id when 'd0000000-0000-0000-0000-0000000000f6'::uuid then 'neuf' when 'd0000000-0000-0000-0000-0000000000f7'::uuid then 'use' else 'bon' end,
+      'commentaire', case objet_id when 'd0000000-0000-0000-0000-0000000000f7'::uuid then 'poignée cassée' else null end))
+    from logi_prets where retour_le is null and objet_id in ('d0000000-0000-0000-0000-0000000000f5', 'd0000000-0000-0000-0000-0000000000f6', 'd0000000-0000-0000-0000-0000000000f7')));
+  assert (select count(*) from logi_historique where objet_id = 'd0000000-0000-0000-0000-0000000000f5' and type = 'retour_partiel') = 0, 'un retour complet en un seul appel ne produit aucun constat d''incomplétude';
+  assert (select etat from logi_objets where id = 'd0000000-0000-0000-0000-0000000000f6') = 'neuf', 'Z1 reste neuf';
+  assert (select etat from logi_objets where id = 'd0000000-0000-0000-0000-0000000000f7') = 'use', 'Z2 passe à usé';
+  assert exists (select 1 from logi_historique where objet_id = 'd0000000-0000-0000-0000-0000000000f7' and type = 'retour' and apres = 'use' and commentaire = 'poignée cassée'), 'la remarque est gardée sur l''élément concerné';
+  assert not exists (select 1 from logi_historique where objet_id in ('d0000000-0000-0000-0000-0000000000f5', 'd0000000-0000-0000-0000-0000000000f6') and commentaire = 'poignée cassée'), 'la remarque n''est pas copiée sur les autres éléments';
+  -- Retour partiel : seul le kit et Z1 reviennent, un seul constat nomme Z2
+  perform logi_emprunter('d0000000-0000-0000-0000-0000000000f5', current_date + 3);
+  perform logi_rendre_detail((
+    select jsonb_agg(jsonb_build_object('pret', id, 'etat', 'bon'))
+    from logi_prets where retour_le is null and objet_id in ('d0000000-0000-0000-0000-0000000000f5', 'd0000000-0000-0000-0000-0000000000f6')));
+  assert (select count(*) from logi_historique where objet_id = 'd0000000-0000-0000-0000-0000000000f5' and type = 'retour_partiel') = 1, 'un seul constat d''incomplétude';
+  assert exists (select 1 from logi_historique where objet_id = 'd0000000-0000-0000-0000-0000000000f5' and type = 'retour_partiel' and commentaire = 'Il manque : Z2 (ZZZZ4444)'), 'le constat nomme l''élément manquant avec son code';
+end $t$;
+-- Contrôles : liste vide, état inconnu, doublon, objet qui s'améliore
+select zz_echec($$select logi_rendre_detail('[]'::jsonb)$$, array['P0001'], 'Aucun');
+select zz_echec($$select logi_rendre_detail((select jsonb_agg(jsonb_build_object('pret', id, 'etat', 'excellent')) from logi_prets where retour_le is null and objet_id = 'd0000000-0000-0000-0000-0000000000f7'))$$, array['P0001'], 'invalide');
+select zz_echec($$select logi_rendre_detail((select jsonb_agg(jsonb_build_object('pret', id, 'etat', 'neuf')) from logi_prets where retour_le is null and objet_id = 'd0000000-0000-0000-0000-0000000000f7'))$$, array['P0001'], 'améliore');
+select zz_echec($$select logi_rendre_detail((select jsonb_agg(x) from (select jsonb_build_object('pret', id, 'etat', 'use') x from logi_prets where retour_le is null and objet_id = 'd0000000-0000-0000-0000-0000000000f7' union all select jsonb_build_object('pret', id, 'etat', 'use') from logi_prets where retour_le is null and objet_id = 'd0000000-0000-0000-0000-0000000000f7') t))$$, array['P0001'], 'double');
+reset role;
+
 select 'LOGISTECOLE PRETS : tous les tests passent' as resultat;
 rollback;

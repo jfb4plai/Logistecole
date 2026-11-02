@@ -57,8 +57,9 @@ export const emprunter = (objetId, echeance, commentaire = null) =>
 export const preter = (objetId, emprunteurId, echeance, commentaire = null) =>
   appeler('logi_preter', { p_objet: objetId, p_emprunteur: emprunteurId, p_echeance: echeance, p_commentaire: commentaire });
 
-export const rendre = (pretIds, etat = 'bon', commentaire = null) =>
-  appeler('logi_rendre', { p_prets: pretIds, p_etat: etat, p_commentaire: commentaire });
+// retours : [{ pret, etat, commentaire }] : un état et une remarque par prêt rendu, en un seul appel
+// (la base ne signale un kit incomplet qu'une fois tous les retours enregistrés).
+export const rendre = (retours, commentaire = null) => appeler('logi_rendre_detail', { p_retours: retours, p_commentaire: commentaire });
 
 export const prolonger = (pretId, echeance) => appeler('logi_prolonger', { p_pret: pretId, p_echeance: echeance });
 
