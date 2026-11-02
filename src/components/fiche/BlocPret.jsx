@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { emprunter, preter, rendre, prolonger, creerEmprunteur } from '../../data/prets.js';
 import { dateIso, echeanceParDefaut, statutPret } from '../../domain/echeance.js';
-import { ETATS } from '../../domain/etats.js';
+import { ETATS_RETOUR } from '../../domain/etats.js';
 import { elementsDuKit, pretOuvertDe, verifierPretPossible } from '../../domain/kit.js';
 import { messageErreur } from '../../lib/erreurs.js';
 import ChampGuide from '../ChampGuide.jsx';
@@ -145,7 +145,7 @@ export default function BlocPret({ objet, objets, prets, actions, emprunteurs, o
           )}
           <ChampGuide id="etat-retour" label="État au retour" aide="« Usé », « défectueux » ou « perdu » change aussi l'état de l'objet. « Bon état » le laisse tel qu'il était.">
             <select id="etat-retour" aria-describedby="etat-retour-aide" className="plai-input" value={etatRetour} onChange={(e) => setEtatRetour(e.target.value)}>
-              {ETATS.filter((e) => e.value !== 'sorti').map((e) => <option key={e.value} value={e.value}>{e.label}</option>)}
+              {ETATS_RETOUR.map((e) => <option key={e.value} value={e.value}>{e.label}</option>)}
             </select>
           </ChampGuide>
           <ChampGuide id="commentaire-retour" label="Remarque au retour (facultatif)" aide="Ce que vous constatez : rayure, câble manquant, tout est en ordre.">

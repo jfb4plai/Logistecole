@@ -1,4 +1,4 @@
-const PRETABLE = ['bon', 'use'];
+import { ETATS_PRETABLES as PRETABLE } from './etats.js';
 
 export const racines = (objets) => objets.filter((o) => !o.parent_id);
 export const elementsDuKit = (objets, parentId) => objets.filter((o) => o.parent_id === parentId);

@@ -308,5 +308,21 @@ do $t$ begin
 end $t$;
 reset role;
 
+-- ── État « neuf » : accepté, prêtable, réservable, jamais déclarable au retour ──
+insert into logi_objets (id, org_id, nom, code, etat) values
+  ('d0000000-0000-0000-0000-0000000000f2', '11111111-1111-1111-1111-111111111111', 'Tablette neuve', 'NNNN2222', 'neuf'),
+  ('d0000000-0000-0000-0000-0000000000f3', '11111111-1111-1111-1111-111111111111', 'Casque neuf', 'NNNN3333', 'neuf');
+select zz_comme('a0000000-0000-0000-0000-000000000004');
+do $t$ begin
+  perform logi_emprunter('d0000000-0000-0000-0000-0000000000f2', current_date + 3);
+  assert exists (select 1 from logi_prets where objet_id = 'd0000000-0000-0000-0000-0000000000f2' and retour_le is null), 'un objet neuf se prête';
+  perform logi_reserver('d0000000-0000-0000-0000-0000000000f3', (current_date + 20) + time '10:00', (current_date + 20) + time '11:00');
+  assert exists (select 1 from logi_reservations where objet_id = 'd0000000-0000-0000-0000-0000000000f3'), 'un objet neuf se réserve';
+  perform logi_signaler('d0000000-0000-0000-0000-0000000000f3', 'Haut-parleur muet');
+  assert (select etat from logi_objets where id = 'd0000000-0000-0000-0000-0000000000f3') = 'defectueux', 'un objet neuf peut être signalé défectueux';
+end $t$;
+select zz_echec($$select logi_rendre(array(select id from logi_prets where objet_id = 'd0000000-0000-0000-0000-0000000000f2' and retour_le is null), 'neuf')$$, array['P0001'], 'invalide');
+reset role;
+
 select 'LOGISTECOLE PRETS : tous les tests passent' as resultat;
 rollback;

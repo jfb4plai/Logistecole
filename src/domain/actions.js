@@ -1,7 +1,7 @@
 import { pretOuvertDe } from './kit.js';
 import { peutEcrire } from './permissions.js';
 
-const PRETABLE = ['bon', 'use'];
+import { ETATS_PRETABLES as PRETABLE } from './etats.js';
 const PEUT_EMPRUNTER = ['admin', 'gestionnaire', 'emprunteur'];
 
 // Quelles actions montrer sur la fiche. La base refuse de toute façon ce qui n'est pas permis.
