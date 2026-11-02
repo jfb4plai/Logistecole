@@ -275,7 +275,7 @@ reset role;
 
 -- ── Lecture des prêts en cours pour le suivi ───────────────────────────
 do $t$ begin
-  assert (select count(*) from logi_prets where retour_le is null) = 4, 'quatre prêts ouverts à la fin : racine + 2 tablettes + projecteur';
+  assert (select count(*) from logi_prets where retour_le is null and org_id = '11111111-1111-1111-1111-111111111111') = 4, 'quatre prêts ouverts à la fin : racine + 2 tablettes + projecteur';
 end $t$;
 
 -- ── Revue finale : l'historique d'une réservation écrit l'heure belge, pas l'heure UTC ──
