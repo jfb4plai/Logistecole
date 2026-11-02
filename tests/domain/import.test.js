@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lireCsv } from '../../src/domain/csv.js';
+import { lireCsv, decoderTexte } from '../../src/domain/csv.js';
 import { analyserImport, MODELE_CSV } from '../../src/domain/import.js';
 
 describe('lireCsv', () => {
@@ -12,6 +12,17 @@ describe('lireCsv', () => {
   });
   it('ignore les lignes entièrement vides', () => {
     expect(lireCsv('a;b\n\n;\n1;2\n')).toEqual([['a', 'b'], ['1', '2']]);
+  });
+});
+
+describe('decoderTexte', () => {
+  it('lit de l\'UTF-8', () => {
+    expect(decoderTexte(new TextEncoder().encode('Matériel d\'éveil').buffer)).toBe('Matériel d\'éveil');
+  });
+  it('retombe sur Windows-1252 quand Excel enregistre en ANSI', () => {
+    // « é » = 0xE9 en Windows-1252, séquence invalide en UTF-8
+    const octets = new Uint8Array([0x4d, 0x61, 0x74, 0xe9, 0x72, 0x69, 0x65, 0x6c]);
+    expect(decoderTexte(octets.buffer)).toBe('Matériel');
   });
 });
 

@@ -3,6 +3,9 @@ import { useOrg } from '../lib/org.jsx';
 import { estAdmin } from '../domain/permissions.js';
 import AdminReferentiel from './AdminReferentiel.jsx';
 import AdminMembres from './AdminMembres.jsx';
+import Import from './Import.jsx';
+
+const ONGLETS = [['emplacements', 'Emplacements'], ['categories', 'Catégories'], ['membres', 'Membres'], ['import', 'Importer']];
 
 export default function Admin() {
   const { role } = useOrg();
@@ -12,7 +15,7 @@ export default function Admin() {
     <>
       <h1>Administration</h1>
       <div className="onglets-admin" role="tablist">
-        {[['emplacements', 'Emplacements'], ['categories', 'Catégories'], ['membres', 'Membres']].map(([id, nom]) => (
+        {ONGLETS.map(([id, nom]) => (
           <button key={id} role="tab" aria-selected={onglet === id} className={onglet === id ? 'plai-btn' : 'plai-btn-ghost'} onClick={() => setOnglet(id)}>{nom}</button>
         ))}
       </div>
@@ -31,6 +34,7 @@ export default function Admin() {
         />
       )}
       {onglet === 'membres' && <AdminMembres />}
+      {onglet === 'import' && <Import />}
     </>
   );
 }

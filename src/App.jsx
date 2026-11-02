@@ -10,6 +10,8 @@ import FormulaireObjet from './pages/FormulaireObjet.jsx';
 const Scan = lazy(() => import('./pages/Scan.jsx'));
 const Etiquettes = lazy(() => import('./pages/Etiquettes.jsx'));
 const Admin = lazy(() => import('./pages/Admin.jsx'));
+const MesEmprunts = lazy(() => import('./pages/MesEmprunts.jsx'));
+const Suivi = lazy(() => import('./pages/Suivi.jsx'));
 
 const enAttente = <p className="chargement">Chargement…</p>;
 
@@ -25,6 +27,8 @@ export default function App() {
         <Route path="/scan" element={<Suspense fallback={enAttente}><Scan /></Suspense>} />
         <Route path="/etiquettes" element={<Suspense fallback={enAttente}><Etiquettes /></Suspense>} />
         <Route path="/admin" element={<Suspense fallback={enAttente}><Admin /></Suspense>} />
+        <Route path="/emprunts" element={<Suspense fallback={enAttente}><MesEmprunts /></Suspense>} />
+        <Route path="/suivi" element={<Suspense fallback={enAttente}><Suivi /></Suspense>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

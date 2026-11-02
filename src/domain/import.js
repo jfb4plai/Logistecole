@@ -11,7 +11,7 @@ export const MODELE_CSV = [
   '',
 ].join('\r\n');
 
-const norm = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+export const normaliserNom = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
 const COLONNES = {
   nom: ['nom', 'designation', 'objet', 'libelle', 'materiel'],
@@ -51,7 +51,7 @@ export function analyserImport(lignes, { categories = [], emplacements = [], cre
   const err = (ligne, message) => resultat.erreurs.push({ ligne, message });
   if (!lignes || lignes.length === 0) { err(0, 'Le fichier est vide.'); return resultat; }
 
-  const entetes = lignes[0].map((h) => norm(h));
+  const entetes = lignes[0].map((h) => normaliserNom(h));
   const index = {};
   for (const [cle, synonymes] of Object.entries(COLONNES)) {
     const i = entetes.findIndex((h) => synonymes.includes(h));
@@ -64,8 +64,8 @@ export function analyserImport(lignes, { categories = [], emplacements = [], cre
   if (donnees.length === 0) { err(0, 'Le fichier est vide : aucune ligne sous les en-têtes.'); return resultat; }
   if (donnees.length > MAX_LIGNES_IMPORT) { err(0, `Trop de lignes : ${MAX_LIGNES_IMPORT} au maximum par import.`); return resultat; }
 
-  const parNomCat = new Map(categories.map((c) => [norm(c.nom), c]));
-  const parNomEmp = new Map(emplacements.map((e) => [norm(e.nom), e]));
+  const parNomCat = new Map(categories.map((c) => [normaliserNom(c.nom), c]));
+  const parNomEmp = new Map(emplacements.map((e) => [normaliserNom(e.nom), e]));
   const manqCat = new Map();
   const manqEmp = new Map();
 
@@ -81,16 +81,16 @@ export function analyserImport(lignes, { categories = [], emplacements = [], cre
     let categorie = null;
     let categorieId = null;
     if (!catSaisie) erreursLigne.push('La catégorie est obligatoire.');
-    else if (parNomCat.has(norm(catSaisie))) { categorie = parNomCat.get(norm(catSaisie)).nom; categorieId = parNomCat.get(norm(catSaisie)).id; }
-    else if (creerManquants) { categorie = catSaisie; if (!manqCat.has(norm(catSaisie))) manqCat.set(norm(catSaisie), catSaisie); }
+    else if (parNomCat.has(normaliserNom(catSaisie))) { categorie = parNomCat.get(normaliserNom(catSaisie)).nom; categorieId = parNomCat.get(normaliserNom(catSaisie)).id; }
+    else if (creerManquants) { categorie = catSaisie; if (!manqCat.has(normaliserNom(catSaisie))) manqCat.set(normaliserNom(catSaisie), catSaisie); }
     else erreursLigne.push(`Catégorie « ${catSaisie} » inconnue.`);
 
     const empSaisi = String(get('emplacement')).trim();
     let emplacement = null;
     let emplacementId = null;
     if (empSaisi) {
-      if (parNomEmp.has(norm(empSaisi))) { emplacement = parNomEmp.get(norm(empSaisi)).nom; emplacementId = parNomEmp.get(norm(empSaisi)).id; }
-      else if (creerManquants) { emplacement = empSaisi; if (!manqEmp.has(norm(empSaisi))) manqEmp.set(norm(empSaisi), empSaisi); }
+      if (parNomEmp.has(normaliserNom(empSaisi))) { emplacement = parNomEmp.get(normaliserNom(empSaisi)).nom; emplacementId = parNomEmp.get(normaliserNom(empSaisi)).id; }
+      else if (creerManquants) { emplacement = empSaisi; if (!manqEmp.has(normaliserNom(empSaisi))) manqEmp.set(normaliserNom(empSaisi), empSaisi); }
       else erreursLigne.push(`Emplacement « ${empSaisi} » inconnu.`);
     }
 
@@ -105,7 +105,7 @@ export function analyserImport(lignes, { categories = [], emplacements = [], cre
     let etat = 'bon';
     const e = get('etat');
     if (!vide(e)) {
-      etat = ETATS[norm(e)];
+      etat = ETATS[normaliserNom(e)];
       if (!etat) erreursLigne.push(`État « ${e} » inconnu (bon, usé, défectueux ou perdu).`);
     }
 

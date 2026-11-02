@@ -2,14 +2,16 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth.jsx';
 import { useOrg } from '../lib/org.jsx';
-import { listerMembres, changerRole, retirerMembre, inviterMembre } from '../data/membres.js';
+import { listerMembres, changerRole, retirerMembre, inviterMembres } from '../data/membres.js';
 import { messageErreur } from '../lib/erreurs.js';
+import { extraireAdresses } from '../domain/adresses.js';
 import ChampGuide from '../components/ChampGuide.jsx';
 
 const ROLES = [
-  { value: 'admin', label: 'Administrateur' },
+  { value: 'emprunteur', label: 'Enseignant (peut emprunter)' },
   { value: 'gestionnaire', label: 'Gestionnaire' },
   { value: 'lecture', label: 'Lecture seule' },
+  { value: 'admin', label: 'Administrateur' },
 ];
 
 export default function AdminMembres() {
@@ -17,55 +19,76 @@ export default function AdminMembres() {
   const { session } = useAuth();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['membres', orgId], queryFn: () => listerMembres(orgId) });
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState('gestionnaire');
+  const [texte, setTexte] = useState('');
+  const [role, setRole] = useState('emprunteur');
   const [erreur, setErreur] = useState('');
-  const [info, setInfo] = useState('');
+  const [rapport, setRapport] = useState(null);
+  const [occupe, setOccupe] = useState(false);
 
-  async function agir(fn, succes = '') {
-    setErreur(''); setInfo('');
-    try { const r = await fn(); qc.invalidateQueries({ queryKey: ['membres', orgId] }); if (succes) setInfo(typeof succes === 'function' ? succes(r) : succes); } catch (e) { setErreur(messageErreur(e)); }
+  async function agir(fn) {
+    setErreur(''); setRapport(null);
+    try { await fn(); qc.invalidateQueries({ queryKey: ['membres', orgId] }); } catch (e) { setErreur(messageErreur(e)); }
+  }
+
+  async function inviter(e) {
+    e.preventDefault();
+    const emails = extraireAdresses(texte);
+    if (emails.length === 0) { setErreur('Saisissez au moins une adresse e-mail.'); return; }
+    setOccupe(true);
+    await agir(async () => {
+      const r = await inviterMembres({ orgId, emails, role });
+      setRapport(r);
+      setTexte(r.resultats.filter((x) => !x.ok).map((x) => x.email).join('\n'));
+    });
+    setOccupe(false);
   }
 
   return (
     <section>
       <h2>Membres</h2>
       {erreur && <p className="plai-error" role="alert">{erreur}</p>}
-      {info && <p className="plai-success" role="status">{info}</p>}
-      <form className="plai-card" onSubmit={(e) => { e.preventDefault(); agir(async () => { const r = await inviterMembre({ orgId, email, role }); setEmail(''); return r; }, (r) => r.invite ? 'Invitation envoyée par e-mail.' : 'Cette personne avait déjà un compte : elle a maintenant accès à votre organisation.'); }}>
-        <ChampGuide id="inv-email" label="Adresse e-mail à inviter" obligatoire aide="La personne reçoit un lien de connexion à cette adresse. Utilisez son adresse professionnelle. Limite : 20 ajouts par jour.">
-          <input id="inv-email" aria-describedby="inv-email-aide" type="email" required className="plai-input" placeholder="prenom.nom@ecole-liege.be" value={email} onChange={(e) => setEmail(e.target.value)} />
+      {rapport && (
+        <div className="plai-success" role="status">
+          <p>{rapport.invites} invitation{rapport.invites > 1 ? 's' : ''} envoyée{rapport.invites > 1 ? 's' : ''}, {rapport.rattaches} personne{rapport.rattaches > 1 ? 's' : ''} déjà inscrite{rapport.rattaches > 1 ? 's' : ''} rattachée{rapport.rattaches > 1 ? 's' : ''}{rapport.echecs > 0 && `, ${rapport.echecs} en échec`}.</p>
+          {rapport.resultats.filter((x) => !x.ok).map((x) => <p key={x.email}>{x.email} : {x.erreur}</p>)}
+        </div>
+      )}
+      <form className="plai-card" onSubmit={inviter}>
+        <ChampGuide id="inv-emails" label="Adresses e-mail à inviter" obligatoire aide="Une adresse par ligne, ou séparées par des virgules : collez directement une colonne de votre tableur. 50 adresses au plus par envoi, 100 ajouts par jour. Chaque personne reçoit un lien de connexion à son adresse. Les adresses en échec restent dans la zone pour que vous puissiez les corriger.">
+          <textarea id="inv-emails" aria-describedby="inv-emails-aide" required rows={5} className="plai-input" placeholder={'prenom.nom@ecole-liege.be\nautre.prenom@ecole-liege.be'} value={texte} onChange={(e) => setTexte(e.target.value)} />
         </ChampGuide>
-        <ChampGuide id="inv-role" label="Rôle" aide="Administrateur : tout gérer, y compris les membres. Gestionnaire : ajouter, modifier et déplacer le matériel. Lecture seule : consulter.">
+        <ChampGuide id="inv-role" label="Rôle donné à toutes ces personnes" aide="Enseignant : consulte, emprunte, rend ses prêts, réserve, signale une panne. Gestionnaire : gère le matériel et les prêts. Lecture seule : consulte. Administrateur : tout, y compris les membres.">
           <select id="inv-role" aria-describedby="inv-role-aide" className="plai-input" value={role} onChange={(e) => setRole(e.target.value)}>
             {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
         </ChampGuide>
-        <button className="plai-btn">Inviter</button>
+        <button className="plai-btn" disabled={occupe}>{occupe ? 'Envoi…' : 'Inviter'}</button>
       </form>
 
-      <table className="tableau">
-        <thead><tr><th>Adresse</th><th>Rôle</th><th></th></tr></thead>
-        <tbody>
-          {(q.data ?? []).map((m) => {
-            const moi = m.user_id === session?.user?.id;
-            return (
-              <tr key={m.user_id}>
-                <td>{m.email}{moi && ' (vous)'}</td>
-                <td>
-                  <select aria-label={`Rôle de ${m.email}`} className="plai-input" value={m.role} disabled={moi}
-                    onChange={(e) => agir(() => changerRole(m.user_id, orgId, e.target.value))}>
-                    {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-                  </select>
-                </td>
-                <td>
-                  {!moi && <button className="plai-btn-ghost" onClick={() => { if (window.confirm(`Retirer ${m.email} de l'organisation ?`)) agir(() => retirerMembre(m.user_id, orgId)); }}>Retirer</button>}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className="defile">
+        <table className="tableau">
+          <thead><tr><th>Adresse</th><th>Rôle</th><th></th></tr></thead>
+          <tbody>
+            {(q.data ?? []).map((m) => {
+              const moi = m.user_id === session?.user?.id;
+              return (
+                <tr key={m.user_id}>
+                  <td>{m.email}{moi && ' (vous)'}</td>
+                  <td>
+                    <select aria-label={`Rôle de ${m.email}`} className="plai-input" value={m.role} disabled={moi}
+                      onChange={(e) => agir(() => changerRole(m.user_id, orgId, e.target.value))}>
+                      {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                  </td>
+                  <td>
+                    {!moi && <button className="plai-btn-ghost" onClick={() => { if (window.confirm(`Retirer ${m.email} de l'organisation ?`)) agir(() => retirerMembre(m.user_id, orgId)); }}>Retirer</button>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

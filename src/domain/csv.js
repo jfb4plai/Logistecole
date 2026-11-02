@@ -24,3 +24,12 @@ export function lireCsv(entree) {
   if (cellule !== '' || ligne.length) { ligne.push(cellule); lignes.push(ligne); }
   return lignes.map((l) => l.map((x) => x.trim())).filter((l) => l.some((x) => x !== ''));
 }
+
+// Excel « CSV (séparateur point-virgule) » enregistre en Windows-1252, pas en UTF-8.
+export function decoderTexte(buffer) {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+  } catch {
+    return new TextDecoder('windows-1252').decode(buffer);
+  }
+}

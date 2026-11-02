@@ -85,3 +85,16 @@ a { color: var(--teal); }
 .tableau { width: 100%; border-collapse: collapse; }
 .tableau th, .tableau td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); font-size: 16px; }
 .page-connexion { max-width: 520px; }
+
+/* Fiche : blocs, définitions, formulaires repliables */
+.bloc { margin-top: 1rem; }
+.bloc h2 { margin-top: 0; }
+.bloc-sous { border-top: 1px solid var(--border); margin-top: 1rem; padding-top: .5rem; }
+.definitions { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; }
+.definitions dt { font-weight: 700; color: var(--text2); }
+.liste-liens { margin-left: 1.25rem; }
+.liste-liens li { margin-bottom: .4rem; }
+.details-form { margin: 1rem 0; }
+.details-form summary { cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; }
+fieldset.liste-cases { border: 1px solid var(--border); border-radius: var(--radius); padding: .75rem 1rem; margin-bottom: 1rem; }
+@media (max-width: 600px) { .definitions { grid-template-columns: 1fr; } .definitions dd { margin-bottom: .5rem; } }

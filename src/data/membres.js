@@ -20,12 +20,13 @@ export async function retirerMembre(userId, orgId) {
   verifier(error);
 }
 
-export async function inviterMembre({ orgId, email, role }) {
+// Invite une ou plusieurs adresses (50 au plus par envoi) ; renvoie le détail par adresse.
+export async function inviterMembres({ orgId, emails, role }) {
   const { data } = await supabase.auth.getSession();
   const rep = await fetch('/api/inviter', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session?.access_token}` },
-    body: JSON.stringify({ orgId, email, role }),
+    body: JSON.stringify({ orgId, emails, role }),
   });
   const corps = await rep.json().catch(() => ({}));
   if (!rep.ok) throw { status: rep.status, message: corps.erreur ?? '' };
