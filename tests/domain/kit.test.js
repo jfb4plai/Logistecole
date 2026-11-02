@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { racines, elementsDuKit, pretOuvertDe, disponibilite, verifierPretPossible } from '../../src/domain/kit.js';
+import { racines, elementsDuKit, pretOuvertDe, disponibilite, verifierPretPossible, pretsEnCours } from '../../src/domain/kit.js';
 
 const objets = [
   { id: 'K', nom: 'Valise', parent_id: null, etat: 'bon', consommable: false },
@@ -43,5 +43,24 @@ describe('verifierPretPossible', () => {
     expect(verifierPretPossible(objets[1], objets, prets)).toMatchObject({ ok: false, raison: expect.stringMatching(/kit/i) });
     expect(verifierPretPossible(objets[3], objets, prets)).toMatchObject({ ok: false, raison: expect.stringMatching(/déjà prêté/i) });
     expect(verifierPretPossible(objets[5], objets, prets)).toMatchObject({ ok: false, raison: expect.stringMatching(/hors service/i) });
+  });
+});
+
+describe('pretsEnCours (revue finale : un élément non rendu ne doit pas disparaître du suivi)', () => {
+  const ouvert = (id, objet, groupe, parent = null) => ({ id, objet_id: objet, groupe_id: groupe, retour_le: null, logi_objets: { nom: objet, parent_id: parent } });
+  it('garde un seul prêt par kit prêté : la racine', () => {
+    const r = pretsEnCours([ouvert('p1', 'K', 'g1'), ouvert('p2', 'T1', 'g1', 'K'), ouvert('p3', 'T2', 'g1', 'K')]);
+    expect(r.map((x) => x.id)).toEqual(['p1']);
+    expect(r[0].manquant).toBe(false);
+  });
+  it('quand la racine est revenue sans un élément, cet élément reste visible et marqué manquant', () => {
+    const r = pretsEnCours([ouvert('p3', 'T2', 'g1', 'K')]);
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ id: 'p3', manquant: true });
+  });
+  it('mélange des cas, objets seuls compris, et ignore les prêts déjà rendus', () => {
+    const rendu = { ...ouvert('p9', 'X', 'g9'), retour_le: '2026-10-01T10:00:00Z' };
+    const r = pretsEnCours([ouvert('p4', 'P', 'g2'), ouvert('p3', 'T2', 'g1', 'K'), rendu]);
+    expect(r.map((x) => [x.id, x.manquant])).toEqual([['p4', false], ['p3', true]]);
   });
 });

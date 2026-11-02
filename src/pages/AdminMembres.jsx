@@ -49,7 +49,8 @@ export default function AdminMembres() {
       {erreur && <p className="plai-error" role="alert">{erreur}</p>}
       {rapport && (
         <div className="plai-success" role="status">
-          <p>{rapport.invites} invitation{rapport.invites > 1 ? 's' : ''} envoyée{rapport.invites > 1 ? 's' : ''}, {rapport.rattaches} personne{rapport.rattaches > 1 ? 's' : ''} déjà inscrite{rapport.rattaches > 1 ? 's' : ''} rattachée{rapport.rattaches > 1 ? 's' : ''}{rapport.echecs > 0 && `, ${rapport.echecs} en échec`}.</p>
+          <p>{rapport.ajoutes} personne{rapport.ajoutes > 1 ? 's' : ''} ajoutée{rapport.ajoutes > 1 ? 's' : ''}{rapport.echecs > 0 && `, ${rapport.echecs} en échec`}.</p>
+          <p className="champ-aide">Celles qui n'avaient pas encore de compte reçoivent un e-mail d'invitation ; les autres ont directement accès.</p>
           {rapport.resultats.filter((x) => !x.ok).map((x) => <p key={x.email}>{x.email} : {x.erreur}</p>)}
         </div>
       )}

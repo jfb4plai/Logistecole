@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { lireCsv, decoderTexte } from '../../src/domain/csv.js';
-import { analyserImport, MODELE_CSV } from '../../src/domain/import.js';
+import { analyserImport, MODELE_CSV, validerFichierImport } from '../../src/domain/import.js';
 
 describe('lireCsv', () => {
   it('lit le point-virgule d\'Excel en français, les guillemets et le BOM', () => {
@@ -12,6 +12,24 @@ describe('lireCsv', () => {
   });
   it('ignore les lignes entièrement vides', () => {
     expect(lireCsv('a;b\n\n;\n1;2\n')).toEqual([['a', 'b'], ['1', '2']]);
+  });
+});
+
+describe('validerFichierImport', () => {
+  it('accepte .xlsx et .csv de taille raisonnable', () => {
+    expect(validerFichierImport({ name: 'inventaire.xlsx', size: 120000 }).ok).toBe(true);
+    expect(validerFichierImport({ name: 'INVENTAIRE.CSV', size: 800 }).ok).toBe(true);
+  });
+  it('refuse un ancien .xls en expliquant quoi faire', () => {
+    const r = validerFichierImport({ name: 'inventaire.xls', size: 1000 });
+    expect(r.ok).toBe(false);
+    expect(r.erreur).toMatch(/\.xlsx/);
+  });
+  it('refuse les autres types, les fichiers vides et ceux de plus de 5 Mo', () => {
+    expect(validerFichierImport({ name: 'photo.pdf', size: 1000 }).ok).toBe(false);
+    expect(validerFichierImport({ name: 'vide.csv', size: 0 }).ok).toBe(false);
+    expect(validerFichierImport({ name: 'gros.xlsx', size: 5 * 1024 * 1024 + 1 }).ok).toBe(false);
+    expect(validerFichierImport(null).ok).toBe(false);
   });
 });
 

@@ -278,5 +278,35 @@ do $t$ begin
   assert (select count(*) from logi_prets where retour_le is null) = 4, 'quatre prêts ouverts à la fin : racine + 2 tablettes + projecteur';
 end $t$;
 
+-- ── Revue finale : l'historique d'une réservation écrit l'heure belge, pas l'heure UTC ──
+select zz_comme('a0000000-0000-0000-0000-000000000002');
+select logi_reserver('d0000000-0000-0000-0000-0000000000f1', timestamptz '2099-01-02 09:00+00', timestamptz '2099-01-02 10:30+00');
+do $t$ begin
+  assert exists (select 1 from logi_historique where objet_id = 'd0000000-0000-0000-0000-0000000000f1' and type = 'reservation'
+                 and commentaire = 'du 02/01/2099 10:00 au 02/01/2099 11:30'), 'l''historique de réservation affiche l''heure de Bruxelles (UTC+1 en hiver)';
+end $t$;
+reset role;
+
+-- ── Revue finale : droits d'exécution et colonne compte_id protégée ─────
+do $t$ begin
+  assert not has_function_privilege('anon', 'logi_trace_objet()', 'execute'), 'la fonction de trace n''est pas exécutable par anon';
+  assert not has_function_privilege('authenticated', 'logi_trace_objet()', 'execute'), 'ni par authenticated';
+  assert not has_function_privilege('authenticated', 'logi_avant_ecriture()', 'execute'), 'la fonction de cohérence n''est pas exécutable par authenticated';
+  assert not has_function_privilege('authenticated', 'logi_garder_un_admin()', 'execute'), 'la garde du dernier admin n''est pas exécutable par authenticated';
+  assert not has_function_privilege('authenticated', 'logi_creer_pret(uuid,uuid,date,text)', 'execute'), 'la création interne d''un prêt n''est pas exécutable';
+  assert not has_function_privilege('authenticated', 'logi_emprunteur_moi(uuid)', 'execute'), 'la fiche emprunteur interne n''est pas exécutable';
+  assert not has_function_privilege('anon', 'logi_emprunter(uuid,date,text)', 'execute'), 'anon ne peut pas emprunter';
+  assert has_function_privilege('authenticated', 'logi_emprunter(uuid,date,text)', 'execute'), 'authenticated peut appeler logi_emprunter';
+end $t$;
+
+select zz_comme('a0000000-0000-0000-0000-000000000002');
+select zz_echec($$update logi_emprunteurs set compte_id = 'b0000000-0000-0000-0000-000000000001'$$, array['42501']);
+select zz_echec($$insert into logi_emprunteurs (org_id, type, libelle, compte_id) values ('11111111-1111-1111-1111-111111111111', 'enseignant', 'X', 'b0000000-0000-0000-0000-000000000001')$$, array['42501']);
+insert into logi_emprunteurs (org_id, type, libelle) values ('11111111-1111-1111-1111-111111111111', 'eleve', 'E99');
+do $t$ begin
+  assert zz_lignes($$update logi_emprunteurs set libelle = 'E100' where libelle = 'E99'$$) = 1, 'le libellé reste modifiable par un gestionnaire';
+end $t$;
+reset role;
+
 select 'LOGISTECOLE PRETS : tous les tests passent' as resultat;
 rollback;

@@ -20,3 +20,16 @@ export function verifierPretPossible(objet, objets, prets) {
     .map((e) => e.nom);
   return { ok: true, exclus };
 }
+
+// Prêts à suivre : un seul par kit (la racine). Si la racine est revenue mais pas un élément,
+// l'élément reste visible, marqué « manquant », pour ne pas disparaître du suivi.
+export function pretsEnCours(prets) {
+  const ouverts = prets.filter((p) => !p.retour_le);
+  const groupesAvecRacine = new Set(ouverts.filter((p) => !p.logi_objets?.parent_id).map((p) => p.groupe_id));
+  const resultat = [];
+  for (const p of ouverts) {
+    if (!p.logi_objets?.parent_id) resultat.push({ ...p, manquant: false });
+    else if (!groupesAvecRacine.has(p.groupe_id)) resultat.push({ ...p, manquant: true });
+  }
+  return resultat;
+}

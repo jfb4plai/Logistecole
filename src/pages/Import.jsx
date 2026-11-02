@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useOrg } from '../lib/org.jsx';
 import { useCategories, useEmplacements } from '../data/hooks.js';
 import { executerImport, lireFichierImport } from '../data/importer.js';
-import { analyserImport, MODELE_CSV, MAX_LIGNES_IMPORT } from '../domain/import.js';
+import { analyserImport, MODELE_CSV, MAX_LIGNES_IMPORT, validerFichierImport } from '../domain/import.js';
 import { messageErreur } from '../lib/erreurs.js';
 import ChampGuide from '../components/ChampGuide.jsx';
 
@@ -31,7 +31,10 @@ export default function Import() {
   const [occupe, setOccupe] = useState(false);
 
   async function analyser() {
-    setErreur(''); setResultat(''); setAnalyse(null); setOccupe(true);
+    setErreur(''); setResultat(''); setAnalyse(null);
+    const v = validerFichierImport(fichier);
+    if (!v.ok) { setErreur(v.erreur); return; }
+    setOccupe(true);
     try {
       const lignes = await lireFichierImport(fichier);
       setAnalyse(analyserImport(lignes, { categories: cats, emplacements: emps, creerManquants }));

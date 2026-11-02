@@ -28,7 +28,7 @@ vi.mock('../../src/data/objets.js', () => ({
   supprimerPhoto: vi.fn(async () => {}),
 }));
 vi.mock('../../src/data/prets.js', () => ({
-  listerPrets: async (_o, opts) => ctx.donnees.prets.filter((p) => !opts?.ouverts || !p.retour_le),
+  listerPrets: vi.fn(async (_o, opts) => ctx.donnees.prets.filter((p) => !opts?.ouverts || !p.retour_le)),
   listerReservations: async () => ctx.donnees.reservations ?? [],
   listerEmprunteurs: async () => ctx.donnees.emprunteurs ?? [],
   creerEmprunteur: vi.fn(async (_o, type, libelle) => ({ id: 'e-new', type, libelle, compte_id: null })),
@@ -43,7 +43,7 @@ vi.mock('../../src/data/referentiels.js', () => ({
 vi.mock('../../src/data/membres.js', () => ({
   listerMembres: async () => [{ user_id: 'u1', email: 'admin@ecole.be', role: 'admin', cree_le: '2026-01-01' }],
   changerRole: vi.fn(), retirerMembre: vi.fn(),
-  inviterMembres: vi.fn(async ({ emails }) => ({ ok: true, resultats: emails.map((e) => ({ email: e, ok: e !== 'mauvais@ecole.be', invite: true, ...(e === 'mauvais@ecole.be' ? { erreur: 'Adresse invalide' } : {}) })), invites: emails.length - 1, rattaches: 0, echecs: 1 })),
+  inviterMembres: vi.fn(async ({ emails }) => ({ ok: true, resultats: emails.map((e) => ({ email: e, ok: e !== 'mauvais@ecole.be', ...(e === 'mauvais@ecole.be' ? { erreur: 'Adresse invalide' } : {}) })), ajoutes: emails.length - 1, echecs: 1 })),
 }));
 vi.mock('../../src/data/importer.js', () => ({
   lireFichierImport: vi.fn(async () => [['nom', 'catégorie', 'quantité'], ['Loupe', 'Tablettes', '3'], ['', 'Tablettes', '1']]),
@@ -167,6 +167,24 @@ describe('Fiche : prêt', () => {
     fiche('PPPP2222');
     expect(await screen.findByText(/En retard de \d+ jours/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Enregistrer le retour' })).toBeInTheDocument();
+  });
+});
+
+describe('Fiche : volume de données', () => {
+  it('ne charge que les prêts ouverts (sinon, après un an, les prêts récents seraient coupés par la limite de lignes)', async () => {
+    fiche('PPPP2222');
+    await screen.findByText('Disponible.');
+    expect(pretsApi.listerPrets).toHaveBeenCalled();
+    for (const appel of pretsApi.listerPrets.mock.calls) expect(appel[1]).toEqual({ ouverts: true });
+  });
+});
+
+describe('Suivi : kit revenu incomplet', () => {
+  it('garde visible la tablette non rendue quand la valise est déjà revenue', async () => {
+    ctx.donnees.prets = [{ ...pret('p2', T1, '2000-01-01'), groupe_id: 'g1' }];
+    monter(<Suivi />);
+    expect(await screen.findByText(/Élément non rendu du kit/)).toBeInTheDocument();
+    expect(screen.getByText('Tablette 1', { selector: 'strong' })).toBeInTheDocument();
   });
 });
 
@@ -351,6 +369,8 @@ describe('Administration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Inviter' }));
     await waitFor(() => expect(membresApi.inviterMembres).toHaveBeenCalledWith({ orgId: 'o1', emails: ['a@ecole.be', 'b@ecole.be', 'mauvais@ecole.be'], role: 'emprunteur' }));
     expect(await screen.findByText(/mauvais@ecole.be : Adresse invalide/)).toBeInTheDocument();
+    expect(screen.getByText(/2 personnes ajoutées, 1 en échec/)).toBeInTheDocument();
+    expect(screen.getByText(/pas encore de compte reçoivent un e-mail/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Adresses e-mail à inviter/).value).toBe('mauvais@ecole.be');
   });
   it('import : analyse, montre les erreurs de ligne, puis importe sur confirmation', async () => {

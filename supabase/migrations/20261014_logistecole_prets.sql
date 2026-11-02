@@ -9,7 +9,7 @@ alter table logi_membres add constraint logi_membres_role_check
 
 -- ── Objets : achat, liens utiles, kit, consommables ────────────────────
 create or replace function logi_liens_valides(p jsonb) returns boolean
-language sql immutable as $$
+language sql immutable set search_path = public as $$
   select case
     when jsonb_typeof(p) <> 'array' then false
     else jsonb_array_length(p) <= 10 and not exists (
@@ -215,6 +215,8 @@ begin
   if not found then raise exception 'Objet introuvable'; end if;
   select * into e from logi_emprunteurs where id = p_emprunteur and org_id = o.org_id;
   if not found then raise exception 'Emprunteur introuvable dans cette organisation'; end if;
+  -- Même verrou que logi_reserver : un prêt et une réservation ne se croisent pas en parallèle.
+  perform pg_advisory_xact_lock(hashtext(o.id::text));
   if o.consommable then raise exception 'Un consommable ne se prête pas : ajustez le stock'; end if;
   if o.parent_id is not null then raise exception 'Cet objet fait partie d''un kit : prêtez le kit entier'; end if;
   if o.etat not in ('bon', 'use') then raise exception 'Cet objet est hors service ou sorti : il ne peut pas être prêté'; end if;
@@ -422,7 +424,7 @@ begin
   insert into logi_reservations (org_id, objet_id, emprunteur_id, debut, fin) values (o.org_id, o.id, v_emp, p_debut, p_fin) returning id into v_id;
   select libelle into v_libelle from logi_emprunteurs where id = v_emp;
   insert into logi_historique (objet_id, org_id, type, apres, commentaire)
-    values (o.id, o.org_id, 'reservation', v_libelle, 'du ' || to_char(p_debut, 'DD/MM/YYYY HH24:MI') || ' au ' || to_char(p_fin, 'DD/MM/YYYY HH24:MI'));
+    values (o.id, o.org_id, 'reservation', v_libelle, 'du ' || to_char(p_debut at time zone 'Europe/Brussels', 'DD/MM/YYYY HH24:MI') || ' au ' || to_char(p_fin at time zone 'Europe/Brussels', 'DD/MM/YYYY HH24:MI'));
   return v_id;
 end $$;
 
@@ -512,5 +514,14 @@ create policy logi_emprunteurs_select on logi_emprunteurs for select to authenti
 revoke all on logi_prets, logi_reservations from anon, authenticated, service_role;
 grant select on logi_prets, logi_reservations to authenticated;
 grant select, insert, update, delete on logi_prets, logi_reservations to service_role;
+
+-- ── Durcissements issus de la revue finale ────────────────────────────
+-- Les fonctions de déclencheur n'ont pas à être exécutables par les utilisateurs.
+revoke all on function logi_avant_ecriture() from public, anon, authenticated;
+revoke all on function logi_trace_objet() from public, anon, authenticated;
+revoke all on function logi_garder_un_admin() from public, anon, authenticated;
+-- compte_id (lien fiche emprunteur -> compte) n'est écrit que par logi_emprunteur_moi.
+revoke insert, update on logi_emprunteurs from authenticated;
+grant insert (org_id, type, libelle, org_liee_id), update (type, libelle, org_liee_id) on logi_emprunteurs to authenticated;
 
 commit;

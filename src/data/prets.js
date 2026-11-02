@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js';
+import { lireToutesLesPages } from './pages.js';
 
 function verifier(error) {
   if (error) throw error;
@@ -15,11 +16,13 @@ const PRET_COLONNES =
   + 'logi_emprunteurs(libelle, type, compte_id), logi_objets(nom, code, parent_id)';
 
 export async function listerPrets(orgId, { ouverts = false } = {}) {
-  let q = supabase.from('logi_prets').select(PRET_COLONNES).eq('org_id', orgId);
-  if (ouverts) q = q.is('retour_le', null);
-  const { data, error } = await q.order('echeance').limit(1000);
-  verifier(error);
-  return data;
+  return lireToutesLesPages(async (de, a) => {
+    let q = supabase.from('logi_prets').select(PRET_COLONNES).eq('org_id', orgId);
+    if (ouverts) q = q.is('retour_le', null);
+    const { data, error } = await q.order('echeance').order('id').range(de, a);
+    verifier(error);
+    return data;
+  });
 }
 
 export async function listerReservations(orgId) {

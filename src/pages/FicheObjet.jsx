@@ -46,7 +46,7 @@ export default function FicheObjet() {
   const histQ = useQuery({ queryKey: ['historique', objet?.id], enabled: !!objet, queryFn: () => listerHistorique(objet.id) });
   const emps = useEmplacements(objOrg).data ?? [];
   const objets = useObjets(objOrg).data ?? [];
-  const prets = usePrets(objOrg).data ?? [];
+  const prets = usePrets(objOrg, { ouverts: true }).data ?? [];
   const reservations = useReservations(objOrg).data ?? [];
   const emprunteurs = useEmprunteurs(objOrg, peutEcrire(role)).data ?? [];
   const photoQ = useQuery({

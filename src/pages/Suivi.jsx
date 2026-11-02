@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useOrg } from '../lib/org.jsx';
 import { useObjets, usePrets, useReservations } from '../data/hooks.js';
 import { statutPret } from '../domain/echeance.js';
+import { pretsEnCours } from '../domain/kit.js';
 import { estSousSeuil } from '../domain/stock.js';
 import { formaterCode } from '../domain/codes.js';
 import { messageErreur } from '../lib/erreurs.js';
@@ -20,8 +21,7 @@ export default function Suivi() {
     return <div className="plai-card"><h1>Suivi</h1><p>Le suivi de l'organisation est réservé aux gestionnaires. Vos prêts sont dans <Link to="/emprunts">Mes emprunts</Link>.</p></div>;
   }
 
-  const racinesPretees = (pretsQ.data ?? []).filter((p) => !p.logi_objets?.parent_id);
-  const enCours = racinesPretees.map((p) => ({ pret: p, statut: statutPret(p) })).sort((a, b) => a.pret.echeance.localeCompare(b.pret.echeance));
+  const enCours = pretsEnCours(pretsQ.data ?? []).map((p) => ({ pret: p, statut: statutPret(p) })).sort((a, b) => a.pret.echeance.localeCompare(b.pret.echeance));
   const enRetard = enCours.filter((x) => x.statut.niveau === 'retard').length;
   const objets = objetsQ.data ?? [];
   const aReparer = objets.filter((o) => o.etat === 'defectueux');
@@ -42,7 +42,7 @@ export default function Suivi() {
             {enCours.map(({ pret, statut }) => (
               <li key={pret.id}>
                 <Link to={`/o/${pret.logi_objets?.code}`} className="ligne-objet">
-                  <span className="ligne-texte"><strong>{pret.logi_objets?.nom}</strong><span className="meta">{pret.logi_emprunteurs?.libelle} · {statut.libelle}</span></span>
+                  <span className="ligne-texte"><strong>{pret.logi_objets?.nom}</strong><span className="meta">{pret.manquant && 'Élément non rendu du kit · '}{pret.logi_emprunteurs?.libelle} · {statut.libelle}</span></span>
                   <span className={`badge-etat badge-${ton[statut.niveau]}`}>{statut.niveau === 'retard' ? 'En retard' : statut.niveau === 'bientot' ? 'Bientôt' : 'En cours'}</span>
                 </Link>
               </li>

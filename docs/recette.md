@@ -8,8 +8,8 @@ Adresse prévue : https://logistecole.jfb4plai.com (pas encore en ligne)
 
 | Élément | Statut | Preuve |
 |---|---|---|
-| SQL (socle, prêts, kits, réservations, stock, pannes, achat) et droits | Constaté sur un vrai Postgres local (PGlite), pas sur la base de JF | `npx vitest run tests/sql` : 9 tests, dont 6 mutations volontaires toutes détectées |
-| Règles métier côté application (échéances, kits, liens, import, créneaux, NFC, invitations) | Constaté | `npx vitest run` : 157 tests |
+| SQL (socle, prêts, kits, réservations, stock, pannes, achat) et droits | Constaté sur un vrai Postgres local (PGlite), pas sur la base de JF | `npx vitest run tests/sql` : 9 tests, dont 6 mutations volontaires toutes détectées ; droits d'exécution et de colonnes vérifiés par requête |
+| Règles métier côté application (échéances, kits, liens, import, créneaux, NFC, invitations) | Constaté | `npx vitest run` : 170 tests |
 | Affichage des pages et règles par rôle | Constaté avec des données simulées | `tests/pages/pages.test.jsx` (28) ; mode démo : 11 pages mesurées (texte 16 px, cibles 44 px, pas de débordement) |
 | Lecture d'un vrai fichier .xlsx | Constaté (fichier généré, cellule de date comprise) | essai du 2026-11-03 |
 | Base de JF avec la migration complète | Non vérifié | script `supabase\tests\...` à exécuter |
@@ -63,6 +63,12 @@ Avec deux comptes : un administrateur, un enseignant (rôle « Enseignant »).
 12. Isolation : un compte de l'organisation A ne voit rien de l'organisation B.
 
 ## 6. Limites connues
+
+- Revue finale : le relecteur indépendant n'a pas pu s'exécuter (limite de crédits), la revue a été faite par l'auteur lui-même, ce qui est plus faible. Elle a produit 8 corrections (droits des fonctions de déclencheur, colonne `compte_id` protégée, verrou prêt/réservation, API d'invitation sans fuite d'existence de compte et `SITE_URL` obligatoire, taille et format du fichier d'import, heure belge dans l'historique, prêts ouverts seulement sur la fiche, pagination au-delà de 1000 lignes, élément de kit non rendu visible dans Suivi).
+- Le verrou entre prêt et réservation (deux demandes simultanées) n'a pas de test : une course ne se reproduit pas de façon déterministe dans une seule connexion.
+- Un enseignant peut techniquement lire le prix, le fournisseur et le lien de facture d'un objet : la base filtre par organisation, pas par colonne, et l'interface les montre à tous les membres. Les masquer aux enseignants demanderait de déplacer ces champs dans une table réservée aux gestionnaires. À décider par JF.
+- L'échéance est contrôlée côté base avec la date UTC : entre 0 h et 2 h (heure belge), l'écart d'un jour est possible sur les bornes (aujourd'hui, +365 jours).
+- Un enseignant qui rend un prêt peut déclarer un état « perdu » ou « défectueux », qui change l'état de l'objet ; l'action est tracée et un gestionnaire peut la corriger.
 
 - Pas de rappel de retour par e-mail ; pas de mode hors ligne ; pas de comptabilité.
 - Le prix d'une puce NFC (moins d'1 euro) vient de JF et n'est pas vérifié.

@@ -25,7 +25,8 @@ export function creerHandler({ creerClient = createClient, env = process.env } =
     const url = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
     const anon = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
     const service = env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !anon || !service) return res.status(500).json({ erreur: 'Configuration serveur incomplète' });
+    // SITE_URL est indispensable : sans lui, le lien d'invitation pointerait vers l'adresse par défaut du projet partagé.
+    if (!url || !anon || !service || !env.SITE_URL) return res.status(500).json({ erreur: 'Configuration serveur incomplète' });
 
     // 1. Qui appelle, et est-ce un admin de cette organisation ? (RLS appliquée avec son jeton)
     const appelant = creerClient(url, anon, { global: { headers: { Authorization: `Bearer ${jeton}` } } });
@@ -47,23 +48,21 @@ export function creerHandler({ creerClient = createClient, env = process.env } =
     for (const email of adresses) {
       if (!ADRESSE.test(email)) { resultats.push({ email, ok: false, erreur: 'Adresse invalide' }); continue; }
       let userId = (await admin.rpc('logi_id_par_email', { p_email: email })).data;
-      let invite = false;
       if (!userId) {
         const { data: inv, error: errInv } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo: env.SITE_URL });
         if (errInv || !inv?.user) { resultats.push({ email, ok: false, erreur: 'Envoi de l\'invitation impossible' }); continue; }
         userId = inv.user.id;
-        invite = true;
       }
       const { error: errMembre } = await admin
         .from('logi_membres').upsert({ user_id: userId, org_id: orgId, role, email }, { onConflict: 'user_id,org_id' });
       if (errMembre) { resultats.push({ email, ok: false, erreur: 'Enregistrement du membre impossible' }); continue; }
-      resultats.push({ email, ok: true, invite });
+      // Le résultat ne dit pas si l'adresse avait déjà un compte : le projet Supabase est partagé avec d'autres apps.
+      resultats.push({ email, ok: true });
     }
     return res.status(200).json({
       ok: true,
       resultats,
-      invites: resultats.filter((r) => r.ok && r.invite).length,
-      rattaches: resultats.filter((r) => r.ok && !r.invite).length,
+      ajoutes: resultats.filter((r) => r.ok).length,
       echecs: resultats.filter((r) => !r.ok).length,
     });
   };

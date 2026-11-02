@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js';
+import { lireToutesLesPages } from './pages.js';
 
 const COLONNES =
   'id, org_id, nom, code, etat, notes, photo_path, categorie_id, emplacement_id, cree_le, maj_le, '
@@ -11,9 +12,11 @@ function verifier(error) {
 }
 
 export async function listerObjets(orgId) {
-  const { data, error } = await supabase.from('logi_objets').select(COLONNES).eq('org_id', orgId).order('nom');
-  verifier(error);
-  return data;
+  return lireToutesLesPages(async (de, a) => {
+    const { data, error } = await supabase.from('logi_objets').select(COLONNES).eq('org_id', orgId).order('nom').order('id').range(de, a);
+    verifier(error);
+    return data;
+  });
 }
 
 export async function getObjetParCode(code) {

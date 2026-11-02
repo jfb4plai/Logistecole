@@ -8,7 +8,7 @@ import { formaterCode } from '../domain/codes.js';
 import { peutEcrire } from '../domain/permissions.js';
 import { statutPret } from '../domain/echeance.js';
 import { estSousSeuil } from '../domain/stock.js';
-import { pretOuvertDe } from '../domain/kit.js';
+import { pretOuvertDe, pretsEnCours } from '../domain/kit.js';
 import { messageErreur } from '../lib/erreurs.js';
 import EtatBadge from '../components/EtatBadge.jsx';
 
@@ -30,7 +30,7 @@ export default function Accueil() {
   // sauf quand on cherche ou qu'on filtre.
   const filtre = f.q || f.categorieId || f.emplacementId || f.etat;
   const visibles = filtrerObjets(tous, f).filter((o) => filtre || !o.parent_id);
-  const enRetard = prets.filter((p) => !p.logi_objets?.parent_id && statutPret(p).niveau === 'retard').length;
+  const enRetard = pretsEnCours(prets).filter((p) => statutPret(p).niveau === 'retard').length;
   const sousSeuil = tous.filter(estSousSeuil).length;
 
   return (

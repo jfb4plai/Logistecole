@@ -144,3 +144,15 @@ export function analyserImport(lignes, { categories = [], emplacements = [], cre
   resultat.emplacementsManquants = [...manqEmp.values()];
   return resultat;
 }
+
+export const TAILLE_MAX_IMPORT = 5 * 1024 * 1024;
+
+// Contrôle avant lecture : un fichier énorme ou d'un mauvais format ne doit pas figer le navigateur.
+export function validerFichierImport(fichier) {
+  if (!fichier || !fichier.size) return { ok: false, erreur: 'Aucun fichier, ou fichier vide.' };
+  const nom = String(fichier.name ?? '').toLowerCase();
+  if (nom.endsWith('.xls')) return { ok: false, erreur: 'L\'ancien format .xls n\'est pas lu : enregistrez le fichier en .xlsx ou en CSV depuis Excel.' };
+  if (!nom.endsWith('.xlsx') && !nom.endsWith('.csv')) return { ok: false, erreur: 'Le fichier doit être un .xlsx ou un .csv.' };
+  if (fichier.size > TAILLE_MAX_IMPORT) return { ok: false, erreur: 'Ce fichier dépasse 5 Mo : découpez-le en plusieurs fichiers.' };
+  return { ok: true };
+}

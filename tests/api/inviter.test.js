@@ -75,15 +75,27 @@ describe('/api/inviter', () => {
     const f = faux();
     const res = await lancer(f, requete());
     expect(res.statusCode).toBe(200);
-    expect(res.body.resultats).toEqual([{ email: 'prof@ecole-liege.be', ok: true, invite: true }]);
+    expect(res.body.resultats).toEqual([{ email: 'prof@ecole-liege.be', ok: true }]);
     expect(f.appels.invite[0][0]).toBe('prof@ecole-liege.be');
     expect(f.appels.invite[0][1].redirectTo).toBe('https://logistecole.jfb4plai.com');
     expect(f.appels.upsert[0]).toMatchObject({ user_id: 'nouveau-prof@ecole-liege.be', org_id: 'o1', role: 'gestionnaire', email: 'prof@ecole-liege.be' });
   });
+  it('ne révèle jamais si une adresse avait déjà un compte (projet partagé entre apps)', async () => {
+    const nouveau = await lancer(faux(), requete());
+    const existant = await lancer(faux({ existants: { 'prof@ecole-liege.be': 'deja-la' } }), requete());
+    expect(JSON.stringify(existant.body)).toBe(JSON.stringify(nouveau.body));
+    expect(JSON.stringify(existant.body)).not.toMatch(/invite|rattach/i);
+  });
+  it('refuse de fonctionner sans SITE_URL (sinon le lien d\'invitation pointerait vers une autre app)', async () => {
+    const res = reponse();
+    const { SITE_URL, ...sansSite } = ENV;
+    await creerHandler({ creerClient: faux().creerClient, env: sansSite })(requete(), res);
+    expect(res.statusCode).toBe(500);
+  });
   it('rattache un utilisateur déjà inscrit sans renvoyer d\'invitation', async () => {
     const f = faux({ existants: { 'prof@ecole-liege.be': 'deja-la' } });
     const res = await lancer(f, requete());
-    expect(res.body.resultats).toEqual([{ email: 'prof@ecole-liege.be', ok: true, invite: false }]);
+    expect(res.body.resultats).toEqual([{ email: 'prof@ecole-liege.be', ok: true }]);
     expect(f.appels.invite).toHaveLength(0);
     expect(f.appels.upsert[0].user_id).toBe('deja-la');
   });
@@ -91,15 +103,15 @@ describe('/api/inviter', () => {
     const f = faux({ existants: { 'b@ecole.be': 'id-b' }, echecInvitation: ['d@ecole.be'] });
     const res = await lancer(f, requete({ body: { orgId: 'o1', role: 'emprunteur', emails: ['A@ecole.be', 'a@ecole.be', 'b@ecole.be', 'pas-un-mail', 'd@ecole.be', 'e@ecole.be'] } }));
     expect(res.statusCode).toBe(200);
-    expect(res.body.resultats.map((r) => [r.email, r.ok, r.invite ?? null])).toEqual([
-      ['a@ecole.be', true, true],
-      ['b@ecole.be', true, false],
-      ['pas-un-mail', false, null],
-      ['d@ecole.be', false, null],
-      ['e@ecole.be', true, true],
+    expect(res.body.resultats.map((r) => [r.email, r.ok])).toEqual([
+      ['a@ecole.be', true],
+      ['b@ecole.be', true],
+      ['pas-un-mail', false],
+      ['d@ecole.be', false],
+      ['e@ecole.be', true],
     ]);
     expect(res.body.resultats.find((r) => r.email === 'pas-un-mail').erreur).toMatch(/invalide/i);
-    expect(res.body).toMatchObject({ ok: true, invites: 2, rattaches: 1, echecs: 2 });
+    expect(res.body).toMatchObject({ ok: true, ajoutes: 3, echecs: 2 });
     expect(f.appels.upsert).toHaveLength(3);
   });
 });
