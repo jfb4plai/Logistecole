@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useOrg } from '../lib/org.jsx';
 import { creerObjets, modifierObjet, getObjetParCode, uploaderPhoto, supprimerPhoto } from '../data/objets.js';
-import { useCategories, useEmplacements, useObjets } from '../data/hooks.js';
+import { definirCriteres } from '../data/criteres.js';
+import { useCategories, useEmplacements, useObjets, useCriteres, useCatalogueAmenagements } from '../data/hooks.js';
+import { normaliserIsbn } from '../domain/isbn.js';
+import { TYPES_RESSOURCE, autresVides, autresDepuisObjet, validerAutres } from '../domain/criteres.js';
+import { organiserCatalogue, selectionVide, selectionDepuisObjet } from '../domain/amenagements.js';
+import PourQui from '../components/PourQui.jsx';
 import { validerLot, nomsDuLot } from '../domain/lot.js';
 import { genererCodes, normaliserCode } from '../domain/codes.js';
 import { validerFichierPhoto, compresserImage } from '../domain/image.js';
@@ -21,7 +26,9 @@ const VIDE = {
   nom: '', categorie_id: '', emplacement_id: '', etat: 'bon', notes: '', quantite: '1',
   date_achat: '', fournisseur: '', prix_achat: '', garantie_fin: '', numero_serie: '', facture_url: '', financement: '',
   liens: '', parent_id: '', consommable: false, stock: '', seuil_min: '', numeroter: true,
+  type_ressource: 'physique', auteur: '', editeur: '', isbn: '', description: '',
 };
+const POUR_QUI_VIDE = { critereIds: [], selection: selectionVide(), autres: autresVides() };
 
 const entierOuNull = (v) => (String(v).trim() === '' ? null : Number(v));
 
@@ -45,12 +52,25 @@ export default function FormulaireObjet({ mode }) {
   const [facture, setFacture] = useState(null);
   const [erreur, setErreur] = useState('');
   const [envoi, setEnvoi] = useState(false);
+  const [pourQui, setPourQui] = useState(POUR_QUI_VIDE);
+  const [touche, setTouche] = useState(false);
+  const critQ = useCriteres();
+  const catQ = useCatalogueAmenagements();
+  const catalogue = useMemo(
+    () => organiserCatalogue(catQ.data ?? {}, { dejaChoisis: existant?.amenagement_ids ?? [] }),
+    [catQ.data, existant],
+  );
+  const listesChargees = !critQ.isLoading && !catQ.isLoading && !critQ.error && !catQ.error;
   const maj = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
+  const majPourQui = (v) => { setPourQui(v); setTouche(true); };
 
   useEffect(() => {
     if (modif && existant) {
+      setPourQui({ critereIds: existant.critere_ids ?? [], selection: selectionDepuisObjet(existant), autres: autresDepuisObjet(existant) });
       setF({
         ...VIDE,
+        type_ressource: existant.type_ressource ?? 'physique', auteur: existant.auteur ?? '', editeur: existant.editeur ?? '',
+        isbn: existant.isbn ?? '', description: existant.description ?? '',
         nom: existant.nom, categorie_id: existant.categorie_id ?? '', emplacement_id: existant.emplacement_id ?? '', etat: existant.etat, notes: existant.notes ?? '',
         date_achat: existant.date_achat ?? '', fournisseur: existant.fournisseur ?? '', prix_achat: existant.prix_achat ?? '', garantie_fin: existant.garantie_fin ?? '',
         numero_serie: existant.numero_serie ?? '', facture_url: existant.facture_url ?? '', financement: existant.financement ?? '',
@@ -78,8 +98,9 @@ export default function FormulaireObjet({ mode }) {
     e.preventDefault();
     setErreur('');
     if (!f.categorie_id) { setErreur('Choisissez une catégorie.'); return; }
-    const conso = !modif && f.consommable;
-    const lot = validerLot({ nom: f.nom, quantite: modif || conso ? 1 : f.quantite, numeroter: f.numeroter });
+    const numerique = f.type_ressource === 'numerique';
+    const conso = !modif && !numerique && f.consommable;
+    const lot = validerLot({ nom: f.nom, quantite: modif || conso || numerique ? 1 : f.quantite, numeroter: f.numeroter });
     if (!lot.ok) { setErreur(lot.erreur); return; }
     const achat = validerAchat(f);
     if (!achat.ok) { setErreur(achat.erreurs.join(' ')); return; }
@@ -89,6 +110,12 @@ export default function FormulaireObjet({ mode }) {
     const stock = entierOuNull(f.stock);
     if (seuil !== null && (!Number.isInteger(seuil) || seuil < 0)) { setErreur('Le seuil minimum doit être un nombre entier positif ou nul.'); return; }
     if (conso && (stock === null || !Number.isInteger(stock) || stock < 0)) { setErreur('Indiquez la quantité en stock (nombre entier, zéro ou plus).'); return; }
+    const isbnSaisi = f.isbn.trim();
+    const isbn = isbnSaisi ? normaliserIsbn(isbnSaisi) : null;
+    if (isbnSaisi && !isbn) { setErreur('L\'ISBN n\'est pas valide : 10 ou 13 chiffres, tirets acceptés, clé de contrôle correcte. Laissez le champ vide si l\'objet n\'en a pas.'); return; }
+    const autres = validerAutres(pourQui.autres);
+    if (!autres.ok) { setErreur(autres.erreurs.join(' ')); return; }
+    if (modif && numerique && (existant?.consommable || f.parent_id)) { setErreur('Un objet numérique ne peut être ni un consommable ni l\'élément d\'un kit.'); return; }
     for (const [fic, nom] of [[fichier, 'photo'], [facture, 'photo de la facture']]) {
       if (fic) {
         const v = validerFichierPhoto(fic);
@@ -110,14 +137,25 @@ export default function FormulaireObjet({ mode }) {
         notes: f.notes.trim() || null,
         ...achat.valeurs,
         liens: liens.liens,
-        parent_id: f.consommable ? null : (f.parent_id || null),
-        seuil_min: f.consommable || (modif && existant?.consommable) ? seuil : null,
+        parent_id: f.consommable || numerique ? null : (f.parent_id || null),
+        seuil_min: !numerique && (f.consommable || (modif && existant?.consommable)) ? seuil : null,
+        type_ressource: f.type_ressource,
+        auteur: f.auteur.trim() || null,
+        editeur: f.editeur.trim() || null,
+        isbn,
+        description: f.description.trim() || null,
+        ...autres.valeurs,
       };
+      const valeurCriteres = { critereIds: pourQui.critereIds, chapitreIds: pourQui.selection.chapitres, amenagementIds: pourQui.selection.amenagements };
+      const aDesCriteres = valeurCriteres.critereIds.length + valeurCriteres.chapitreIds.length + valeurCriteres.amenagementIds.length > 0;
 
       if (modif) {
         const champs = { ...commun };
         if (photoPath) champs.photo_path = photoPath;
         if (facturePath) champs.facture_photo_path = facturePath;
+        // Critères d'abord : si cet appel échoue, la fiche n'a pas encore changé et les photos téléversées sont retirées.
+        // Rien n'est écrit si les listes ne se sont pas chargées : on n'efface jamais des critères qu'on n'a pas pu afficher.
+        if (touche && listesChargees) await definirCriteres(existant.id, valeurCriteres);
         await modifierObjet(existant.id, champs);
         qc.invalidateQueries({ queryKey: ['objet'] });
         qc.invalidateQueries({ queryKey: ['objets', orgId] });
@@ -132,7 +170,7 @@ export default function FormulaireObjet({ mode }) {
         const noms = nomsDuLot(lot.nom, lot.quantite, f.numeroter);
         try {
           crees = await creerObjets(orgId, codes.map((code, i) => ({
-            ...commun, nom: noms[i], etat: f.etat, photo_path: photoPath, facture_photo_path: facturePath, code,
+            ...commun, nom: noms[i], etat: numerique ? 'bon' : f.etat, photo_path: photoPath, facture_photo_path: facturePath, code,
             consommable: conso, quantite: conso ? stock : null,
           })));
           break;
@@ -140,9 +178,18 @@ export default function FormulaireObjet({ mode }) {
           if (err?.code !== '23505' || essai >= 2) throw err;
         }
       }
+      // Les objets existent : un échec des critères ne doit ni supprimer les photos ni faire renvoyer le formulaire.
+      let avertissement = null;
+      if (aDesCriteres && listesChargees) {
+        try {
+          for (const c of crees) await definirCriteres(c.objet_id, valeurCriteres);
+        } catch {
+          avertissement = 'L\'objet a été créé mais les critères n\'ont pas pu être enregistrés : ouvrez « Modifier la fiche » pour les ajouter.';
+        }
+      }
       qc.invalidateQueries({ queryKey: ['objets', orgId] });
       const codes = crees.map((c) => c.objet_code);
-      navigate(codes.length === 1 ? `/o/${codes[0]}` : `/etiquettes?codes=${codes.join(',')}`);
+      navigate(codes.length === 1 ? `/o/${codes[0]}` : `/etiquettes?codes=${codes.join(',')}`, avertissement ? { state: { avertissement } } : undefined);
     } catch (err) {
       for (const p of televerses) await supprimerPhoto(p);
       setErreur(messageErreur(err));
@@ -151,7 +198,8 @@ export default function FormulaireObjet({ mode }) {
     }
   }
 
-  const conso = modif ? existant?.consommable : f.consommable;
+  const numerique = f.type_ressource === 'numerique';
+  const conso = !numerique && (modif ? existant?.consommable : f.consommable);
 
   return (
     <form onSubmit={soumettre} noValidate>
@@ -160,6 +208,12 @@ export default function FormulaireObjet({ mode }) {
 
       <ChampGuide id="nom" label="Nom de l'objet" obligatoire aide="Apparaît dans la liste et sur l'étiquette imprimée. Soyez précis pour le retrouver : 120 caractères au maximum.">
         <input id="nom" aria-describedby="nom-aide" className="plai-input" maxLength={120} placeholder="Ex. : Valise de 16 tablettes, salle 12" value={f.nom} onChange={maj('nom')} />
+      </ChampGuide>
+
+      <ChampGuide id="type_ressource" label="Type de ressource" aide="Physique : on peut le prêter. Numérique : un site ou une application, sans prêt ni étiquette. Les deux : l'objet existe sous les deux formes.">
+        <select id="type_ressource" aria-describedby="type_ressource-aide" className="plai-input" value={f.type_ressource} onChange={maj('type_ressource')}>
+          {TYPES_RESSOURCE.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
       </ChampGuide>
 
       <ChampGuide id="categorie" label="Catégorie" obligatoire aide="Sert à filtrer la liste. Les catégories sont gérées par l'administrateur de votre organisation.">
@@ -176,7 +230,24 @@ export default function FormulaireObjet({ mode }) {
         </select>
       </ChampGuide>
 
-      {!modif && (
+      <ChampGuide id="auteur" label="Auteur" aide="Auteur d'un livre ou concepteur d'un jeu. Il apparaît sur la fiche et se retrouve en recherche.">
+        <input id="auteur" aria-describedby="auteur-aide" className="plai-input" maxLength={200} placeholder="Ex. : Stanislas Dehaene" value={f.auteur} onChange={maj('auteur')} />
+      </ChampGuide>
+
+      <ChampGuide id="editeur" label="Éditeur" aide="Maison d'édition ou marque. Il apparaît sur la fiche et se retrouve en recherche.">
+        <input id="editeur" aria-describedby="editeur-aide" className="plai-input" maxLength={200} placeholder="Ex. : Odile Jacob" value={f.editeur} onChange={maj('editeur')} />
+      </ChampGuide>
+
+      <ChampGuide id="isbn" label="ISBN" aide="Pour un livre : 10 ou 13 chiffres, tirets acceptés. Il est contrôlé à l'enregistrement et se retrouve en recherche. Laissez vide s'il n'y en a pas.">
+        <input id="isbn" aria-describedby="isbn-aide" className="plai-input" inputMode="numeric" maxLength={20} placeholder="Ex. : 978-2-7381-1974-2" value={f.isbn} onChange={maj('isbn')} />
+      </ChampGuide>
+
+      <ChampGuide id="description" label="Description" aide="Quelques lignes pour dire à quoi sert l'objet et à qui il peut servir. 2000 caractères au maximum. Se retrouve en recherche.">
+        <textarea id="description" aria-describedby="description-aide" className="plai-input" rows={4} maxLength={2000}
+          placeholder="Ex. : Livre de référence sur ce que le cerveau fait quand on lit" value={f.description} onChange={maj('description')} />
+      </ChampGuide>
+
+      {!modif && !numerique && (
         <>
           <ChampGuide id="etat" label="État à l'arrivée" aide="L'état de l'objet au moment où vous l'enregistrez. Il pourra changer ensuite et chaque changement est tracé.">
             <select id="etat" aria-describedby="etat-aide" className="plai-input" value={f.etat} onChange={maj('etat')}>
@@ -215,6 +286,9 @@ export default function FormulaireObjet({ mode }) {
         </ChampGuide>
       )}
 
+      <PourQui criteres={critQ.data ?? []} catalogue={catalogue} valeur={pourQui} onChange={majPourQui}
+        chargement={critQ.isLoading || catQ.isLoading} erreur={critQ.error || catQ.error} />
+
       <ChampGuide id="photo" label="Photo" aide="Facultative. Elle est réduite automatiquement (environ 200 Ko) avant l'envoi. Avec plusieurs exemplaires, la même photo sert pour tous.">
         <input id="photo" aria-describedby="photo-aide" className="plai-input" type="file" accept="image/*" onChange={(e) => setFichier(e.target.files?.[0] ?? null)} />
       </ChampGuide>
@@ -223,7 +297,7 @@ export default function FormulaireObjet({ mode }) {
         <textarea id="notes" aria-describedby="notes-aide" className="plai-input" rows={3} maxLength={2000} placeholder="Ex. : chargeurs dans le tiroir du bas, clé chez la secrétaire" value={f.notes} onChange={maj('notes')} />
       </ChampGuide>
 
-      {!conso && (
+      {!conso && !numerique && (
         <details className="plai-card details-form">
           <summary>Kit (facultatif)</summary>
           <ChampGuide id="kit" label="Fait partie du kit" aide="Un kit se prête et se rend d'un bloc (par exemple une valise et ses tablettes). Choisissez l'objet principal : il doit exister déjà et ne pas être lui-même un élément. Un élément ne se prête pas seul.">

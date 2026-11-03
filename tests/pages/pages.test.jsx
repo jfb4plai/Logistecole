@@ -2,7 +2,7 @@
 // vérifient ce que chaque rôle voit. Ils ne remplacent pas un essai avec la vraie base.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const ctx = vi.hoisted(() => ({ role: 'gestionnaire', userId: 'u1', donnees: {}, appels: {} }));
@@ -29,7 +29,10 @@ vi.mock('../../src/data/objets.js', () => ({
 }));
 vi.mock('../../src/data/criteres.js', () => ({
   listerCriteres: vi.fn(async () => ctx.donnees.criteres ?? []),
-  listerCatalogueAmenagements: vi.fn(async () => ctx.donnees.catalogue ?? { chapitres: [], amenagements: [] }),
+  listerCatalogueAmenagements: vi.fn(async () => {
+    if (ctx.donnees.catalogueErreur) throw new Error('réseau');
+    return ctx.donnees.catalogue ?? { chapitres: [], amenagements: [] };
+  }),
   definirCriteres: vi.fn(async () => {}),
 }));
 vi.mock('../../src/data/prets.js', () => ({
@@ -62,6 +65,7 @@ import * as objetsApi from '../../src/data/objets.js';
 import * as pretsApi from '../../src/data/prets.js';
 import * as membresApi from '../../src/data/membres.js';
 import * as importerApi from '../../src/data/importer.js';
+import * as criteresApi from '../../src/data/criteres.js';
 import Accueil from '../../src/pages/Accueil.jsx';
 import FicheObjet from '../../src/pages/FicheObjet.jsx';
 import FormulaireObjet from '../../src/pages/FormulaireObjet.jsx';
@@ -547,6 +551,163 @@ describe('Administration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Importer 3 objets' }));
     await waitFor(() => expect(importerApi.executerImport).toHaveBeenCalled());
     expect(await screen.findByText(/3 objets importés/)).toBeInTheDocument();
+  });
+});
+
+describe('Formulaire : fiche enrichie', () => {
+  const CRITERES = [
+    { id: 'k1', famille: 'trouble', libelle: 'Dyslexie', aide: 'a', ordre: 1 },
+    { id: 'k2', famille: 'difficulte', libelle: 'Lecture', aide: 'b', ordre: 1 },
+  ];
+  const CATALOGUE = {
+    chapitres: [{ id: 'ch1', ordre: 1, titre: '1. SUPPORTS ET DOCUMENTS', est_dispositif: false }],
+    amenagements: [{ id: 'am1', chapitre_id: 'ch1', ordre: 1, libelle: 'Police lisible', type: 'AU', actif: true }],
+  };
+  const Etat = () => <p data-testid="avert">{useLocation().state?.avertissement ?? 'aucun'}</p>;
+  const creation = () => monter(
+    <Routes><Route path="/nouveau" element={<FormulaireObjet mode="creer" />} /><Route path="/o/:code" element={<Etat />} /></Routes>, '/nouveau');
+  const modification = (code) => monter(
+    <Routes><Route path="/o/:code/modifier" element={<FormulaireObjet mode="modifier" />} /><Route path="/o/:code" element={<Etat />} /></Routes>, `/o/${code}/modifier`);
+  const remplir = async (nom = 'Les neurones de la lecture') => {
+    fireEvent.change(await screen.findByLabelText(/Nom de l'objet/), { target: { value: nom } });
+    fireEvent.change(screen.getByLabelText(/Catégorie/), { target: { value: 'c1' } });
+  };
+  const ajouter = () => fireEvent.click(screen.getByRole('button', { name: 'Ajouter' }));
+  const cocherTrouble = async () => {
+    fireEvent.click(await screen.findByRole('button', { name: /Troubles concernés/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Dyslexie' }));
+  };
+
+  beforeEach(() => {
+    ctx.donnees.criteres = CRITERES;
+    ctx.donnees.catalogue = CATALOGUE;
+  });
+
+  it("normalise l'ISBN en 13 chiffres et envoie auteur, éditeur, description et type", async () => {
+    creation();
+    await remplir();
+    fireEvent.change(screen.getByLabelText('ISBN'), { target: { value: '2-7381-1974-3' } });
+    fireEvent.change(screen.getByLabelText('Auteur'), { target: { value: 'Stanislas Dehaene' } });
+    fireEvent.change(screen.getByLabelText('Éditeur'), { target: { value: 'Odile Jacob' } });
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: ' Livre de référence. ' } });
+    ajouter();
+    await waitFor(() => expect(objetsApi.creerObjets).toHaveBeenCalled());
+    expect(objetsApi.creerObjets.mock.calls[0][1][0]).toMatchObject({
+      isbn: '9782738119742', auteur: 'Stanislas Dehaene', editeur: 'Odile Jacob', description: 'Livre de référence.',
+      type_ressource: 'physique', autre_trouble: null, autre_difficulte: null, autre_amenagement: null,
+    });
+  });
+  it('refuse un ISBN invalide avant tout appel réseau', async () => {
+    creation();
+    await remplir();
+    fireEvent.change(screen.getByLabelText('ISBN'), { target: { value: '123' } });
+    ajouter();
+    expect(await screen.findByRole('alert')).toHaveTextContent(/ISBN/);
+    expect(objetsApi.creerObjets).not.toHaveBeenCalled();
+  });
+  it('refuse « Autre » coché sans texte', async () => {
+    creation();
+    await remplir();
+    fireEvent.click(await screen.findByRole('button', { name: /Troubles concernés/ }));
+    fireEvent.click(within(screen.getByRole('group', { name: /Troubles concernés/ })).getByRole('checkbox', { name: 'Autre (préciser)' }));
+    ajouter();
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Autre/);
+    expect(objetsApi.creerObjets).not.toHaveBeenCalled();
+  });
+  it("n'enregistre pas le texte d'un « Autre » décoché", async () => {
+    creation();
+    await remplir();
+    fireEvent.click(await screen.findByRole('button', { name: /Troubles concernés/ }));
+    fireEvent.click(within(screen.getByRole('group', { name: /Troubles concernés/ })).getByRole('checkbox', { name: 'Autre (préciser)' }));
+    fireEvent.change(screen.getByLabelText(/Précisez « Autre »/), { target: { value: 'texte tapé' } });
+    fireEvent.click(within(screen.getByRole('group', { name: /Troubles concernés/ })).getByRole('checkbox', { name: 'Autre (préciser)' }));
+    ajouter();
+    await waitFor(() => expect(objetsApi.creerObjets).toHaveBeenCalled());
+    expect(objetsApi.creerObjets.mock.calls[0][1][0].autre_trouble).toBeNull();
+  });
+  it('envoie « Autre » rempli', async () => {
+    creation();
+    await remplir();
+    fireEvent.click(await screen.findByRole('button', { name: /Troubles concernés/ }));
+    fireEvent.click(within(screen.getByRole('group', { name: /Troubles concernés/ })).getByRole('checkbox', { name: 'Autre (préciser)' }));
+    fireEvent.change(screen.getByLabelText(/Précisez « Autre »/), { target: { value: ' élèves allophones ' } });
+    ajouter();
+    await waitFor(() => expect(objetsApi.creerObjets).toHaveBeenCalled());
+    expect(objetsApi.creerObjets.mock.calls[0][1][0].autre_trouble).toBe('élèves allophones');
+  });
+  it("pose les critères sur l'objet créé", async () => {
+    creation();
+    await remplir();
+    await cocherTrouble();
+    ajouter();
+    await waitFor(() => expect(criteresApi.definirCriteres).toHaveBeenCalledWith('n0', { critereIds: ['k1'], chapitreIds: [], amenagementIds: [] }));
+  });
+  it("n'appelle pas definirCriteres quand aucun critère n'est posé", async () => {
+    creation();
+    await remplir();
+    await screen.findByRole('button', { name: /Troubles concernés/ });
+    ajouter();
+    await waitFor(() => expect(objetsApi.creerObjets).toHaveBeenCalled());
+    expect(criteresApi.definirCriteres).not.toHaveBeenCalled();
+  });
+  it("si les critères échouent après la création, navigue quand même avec un avertissement", async () => {
+    criteresApi.definirCriteres.mockRejectedValueOnce(new Error('boom'));
+    creation();
+    await remplir();
+    await cocherTrouble();
+    ajouter();
+    expect(await screen.findByTestId('avert')).toHaveTextContent(/créé mais les critères n'ont pas pu être enregistrés/);
+    expect(objetsApi.creerObjets).toHaveBeenCalledTimes(1);
+    expect(objetsApi.supprimerPhoto).not.toHaveBeenCalled();
+  });
+  it('objet numérique : ni quantité, ni consommable, ni kit ; un seul objet sans parent', async () => {
+    creation();
+    await remplir('Site de calcul mental');
+    fireEvent.change(screen.getByLabelText('Type de ressource'), { target: { value: 'numerique' } });
+    expect(screen.queryByLabelText(/Nombre d'exemplaires/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/C'est un consommable/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Fait partie du kit')).not.toBeInTheDocument();
+    ajouter();
+    await waitFor(() => expect(objetsApi.creerObjets).toHaveBeenCalled());
+    const lot = objetsApi.creerObjets.mock.calls[0][1];
+    expect(lot).toHaveLength(1);
+    expect(lot[0]).toMatchObject({ type_ressource: 'numerique', consommable: false, parent_id: null, etat: 'bon', nom: 'Site de calcul mental' });
+  });
+  it('un consommable coché puis un passage en numérique ne laisse pas de consommable', async () => {
+    creation();
+    await remplir('Piles');
+    fireEvent.click(screen.getByLabelText(/C'est un consommable/));
+    fireEvent.change(screen.getByLabelText('Type de ressource'), { target: { value: 'numerique' } });
+    ajouter();
+    await waitFor(() => expect(objetsApi.creerObjets).toHaveBeenCalled());
+    expect(objetsApi.creerObjets.mock.calls[0][1][0]).toMatchObject({ consommable: false, quantite: null });
+  });
+
+  it("modification sans toucher au bloc : n'appelle pas definirCriteres", async () => {
+    modification('PPPP2222');
+    fireEvent.click(await screen.findByRole('button', { name: 'Enregistrer les modifications' }));
+    await waitFor(() => expect(objetsApi.modifierObjet).toHaveBeenCalled());
+    expect(criteresApi.definirCriteres).not.toHaveBeenCalled();
+  });
+  it('modification en touchant au bloc : appelle definirCriteres avant modifierObjet', async () => {
+    ctx.donnees.objets = [{ ...P, critere_ids: ['k2'], chapitre_ids: [], amenagement_ids: [] }];
+    modification('PPPP2222');
+    await screen.findByLabelText(/Nom de l'objet/);
+    await cocherTrouble();
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer les modifications' }));
+    await waitFor(() => expect(criteresApi.definirCriteres).toHaveBeenCalledWith('P', { critereIds: ['k2', 'k1'], chapitreIds: [], amenagementIds: [] }));
+    await waitFor(() => expect(objetsApi.modifierObjet).toHaveBeenCalled());
+    expect(criteresApi.definirCriteres.mock.invocationCallOrder[0]).toBeLessThan(objetsApi.modifierObjet.mock.invocationCallOrder[0]);
+  });
+  it("catalogue illisible : la fiche s'enregistre et aucun critère existant n'est effacé", async () => {
+    ctx.donnees.catalogueErreur = true;
+    ctx.donnees.objets = [{ ...P, critere_ids: ['k1'], chapitre_ids: ['ch1'], amenagement_ids: [], autre_trouble: 'élèves allophones' }];
+    modification('PPPP2222');
+    expect(await screen.findByText(/Les listes n'ont pas pu être chargées/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer les modifications' }));
+    await waitFor(() => expect(objetsApi.modifierObjet).toHaveBeenCalled());
+    expect(criteresApi.definirCriteres).not.toHaveBeenCalled();
+    expect(objetsApi.modifierObjet.mock.calls[0][1].autre_trouble).toBe('élèves allophones');
   });
 });
 
