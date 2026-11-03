@@ -11,3 +11,9 @@ export function lireErreurLien(adresse) {
   const code = params.get('error_code') || params.get('error');
   return { code, message: MESSAGES[code] ?? GENERIQUE };
 }
+
+// Page d'arrivée après la connexion : « Matériel », sauf la fiche d'un objet (on y arrive en scannant une étiquette).
+// Les pages réservées (administration, suivi…) ne sont jamais le point d'arrivée : un enseignant s'y heurterait à un refus.
+export function pageDeRetour(from) {
+  return /^\/o\/[A-Za-z0-9-]+$/.test(String(from ?? '')) ? from : '/';
+}

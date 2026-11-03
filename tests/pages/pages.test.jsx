@@ -77,6 +77,7 @@ import Nav from '../../src/components/Nav.jsx';
 import Journal from '../../src/pages/Journal.jsx';
 import Etiquettes from '../../src/pages/Etiquettes.jsx';
 import Admin from '../../src/pages/Admin.jsx';
+import Connexion from '../../src/pages/Connexion.jsx';
 import AdminAutres from '../../src/pages/AdminAutres.jsx';
 import * as journalApi from '../../src/data/journal.js';
 
@@ -785,6 +786,26 @@ describe('Accueil : recherche enrichie', () => {
     fireEvent.change(screen.getByLabelText('Rechercher'), { target: { value: 'projecteur' } });
     expect(noms()).toContain('Projecteur C');
     expect(noms()).not.toContain('Livre A');
+  });
+});
+
+describe('Connexion : page d\'arrivée', () => {
+  const arrivee = (from) => monter(
+    <Routes>
+      <Route path="/connexion" element={<Connexion />} />
+      <Route path="/" element={<p>PAGE MATÉRIEL</p>} />
+      <Route path="/admin" element={<p>PAGE ADMIN</p>} />
+      <Route path="/o/:code" element={<p>PAGE FICHE</p>} />
+    </Routes>,
+    { pathname: '/connexion', state: { from } },
+  );
+  it('un utilisateur connecté qui venait d\'une page réservée arrive sur « Matériel »', async () => {
+    arrivee('/admin');
+    expect(await screen.findByText('PAGE MATÉRIEL')).toBeInTheDocument();
+  });
+  it('mais retrouve la fiche d\'un objet scannée avant la connexion', async () => {
+    arrivee('/o/6BZ2TW68');
+    expect(await screen.findByText('PAGE FICHE')).toBeInTheDocument();
   });
 });
 

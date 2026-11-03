@@ -1,5 +1,22 @@
 import { describe, it, expect } from 'vitest';
-import { lireErreurLien } from '../../src/domain/authurl.js';
+import { lireErreurLien, pageDeRetour } from '../../src/domain/authurl.js';
+
+describe('pageDeRetour : où arrive-t-on après la connexion', () => {
+  it('arrive sur « Matériel » par défaut', () => {
+    expect(pageDeRetour(undefined)).toBe('/');
+    expect(pageDeRetour('')).toBe('/');
+    expect(pageDeRetour('/')).toBe('/');
+  });
+  it('ramène sur la fiche d\'un objet : on y arrive en scannant une étiquette', () => {
+    expect(pageDeRetour('/o/6BZ2TW68')).toBe('/o/6BZ2TW68');
+  });
+  it('ne ramène pas sur une page réservée ou secondaire, un enseignant s\'y heurterait à un refus', () => {
+    for (const p of ['/admin', '/nouveau', '/suivi', '/journal', '/etiquettes?codes=ABC', '/o/ABC/modifier']) expect(pageDeRetour(p)).toBe('/');
+  });
+  it('refuse une adresse venue de l\'extérieur', () => {
+    for (const p of ['https://exemple.be/o/ABC', '//exemple.be', 'javascript:alert(1)']) expect(pageDeRetour(p)).toBe('/');
+  });
+});
 
 describe('lireErreurLien', () => {
   it('explique un lien expiré ou déjà utilisé (certaines messageries l\'ouvrent avant vous)', () => {

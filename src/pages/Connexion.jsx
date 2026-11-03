@@ -3,13 +3,14 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase.js';
 import { useAuth } from '../lib/auth.jsx';
 import { messageErreur } from '../lib/erreurs.js';
+import { pageDeRetour } from '../domain/authurl.js';
 import ChampGuide from '../components/ChampGuide.jsx';
 import Footer from '../components/Footer.jsx';
 
 export default function Connexion() {
   const { session, ready, erreurLien } = useAuth();
   const loc = useLocation();
-  const from = loc.state?.from ?? '/';
+  const from = pageDeRetour(loc.state?.from);
   const [email, setEmail] = useState('');
   const [etat, setEtat] = useState({ envoi: false, ok: false, erreur: '' });
 

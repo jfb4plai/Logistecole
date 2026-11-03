@@ -25,7 +25,8 @@ const mutationsFiche = [
 for (const [nom, muter] of mutationsFiche) {
   it(`mutation détectée (fiche) : ${nom}`, async () => {
     const db = await H.creerBase(H.migrations().filter((f) => f < '20261019'));
-    const original = H.lireFichier('supabase/migrations/20261019_logistecole_fiche_enrichie.sql');
+    // Git sous Windows peut réécrire les fins de ligne en CRLF : les fragments à muter sont écrits avec des \n.
+    const original = H.lireFichier('supabase/migrations/20261019_logistecole_fiche_enrichie.sql').replace(/\r\n/g, '\n');
     const muté = muter(original);
     expect(muté).not.toBe(original);
     await db.exec(muté);
