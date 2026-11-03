@@ -25,6 +25,11 @@ const IMITATION_SUPABASE = `
   alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
   alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 
+  -- Tables d'AménagActif (présentes en production) dont dépend la fiche enrichie.
+  create table ar_chapitres (id uuid primary key default gen_random_uuid(), ordre int, titre text, est_dispositif boolean not null default false);
+  create table ar_amenagements (id uuid primary key default gen_random_uuid(), chapitre_id uuid references ar_chapitres(id) on delete cascade,
+    ordre int, libelle text, type text, actif boolean not null default true);
+
   create schema storage;
   create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
   create table storage.objects (id uuid default gen_random_uuid(), bucket_id text, name text);
