@@ -4,8 +4,9 @@ import { estAdmin } from '../domain/permissions.js';
 import AdminReferentiel from './AdminReferentiel.jsx';
 import AdminMembres from './AdminMembres.jsx';
 import Import from './Import.jsx';
+import AdminAutres from './AdminAutres.jsx';
 
-const ONGLETS = [['emplacements', 'Emplacements'], ['categories', 'Catégories'], ['membres', 'Membres'], ['import', 'Importer']];
+const ONGLETS = [['emplacements', 'Emplacements'], ['categories', 'Catégories'], ['membres', 'Membres'], ['import', 'Importer'], ['autres', 'Textes « Autre »']];
 
 export default function Admin() {
   const { role } = useOrg();
@@ -35,6 +36,7 @@ export default function Admin() {
       )}
       {onglet === 'membres' && <AdminMembres />}
       {onglet === 'import' && <Import />}
+      {onglet === 'autres' && <AdminAutres />}
     </>
   );
 }

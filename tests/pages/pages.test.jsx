@@ -76,6 +76,8 @@ import Import from '../../src/pages/Import.jsx';
 import Nav from '../../src/components/Nav.jsx';
 import Journal from '../../src/pages/Journal.jsx';
 import Etiquettes from '../../src/pages/Etiquettes.jsx';
+import Admin from '../../src/pages/Admin.jsx';
+import AdminAutres from '../../src/pages/AdminAutres.jsx';
 import * as journalApi from '../../src/data/journal.js';
 
 const base = { org_id: 'o1', etat: 'bon', parent_id: null, consommable: false, notes: null, photo_path: null, categorie_id: 'c1', emplacement_id: 'e1',
@@ -783,6 +785,38 @@ describe('Accueil : recherche enrichie', () => {
     fireEvent.change(screen.getByLabelText('Rechercher'), { target: { value: 'projecteur' } });
     expect(noms()).toContain('Projecteur C');
     expect(noms()).not.toContain('Livre A');
+  });
+});
+
+describe('Administration : textes « Autre »', () => {
+  const avec = (id, nom, code, champs) => ({ ...base, id, nom, code, ...champs });
+  it('regroupe par famille les textes saisis dans « Autre », avec un lien vers la fiche', async () => {
+    ctx.role = 'admin';
+    ctx.donnees.objets = [
+      avec('A', 'Livre A', 'LLLL2222', { autre_trouble: 'élèves allophones' }),
+      avec('B', 'Jeu B', 'JJJJ2222', { autre_trouble: 'surdité partielle', autre_amenagement: 'lecteur d\'écran' }),
+      avec('C', 'Projecteur C', 'PPPP3333', {}),
+    ];
+    monter(<AdminAutres />);
+    expect(await screen.findByRole('heading', { name: 'Troubles' })).toBeInTheDocument();
+    expect(screen.getByText('élèves allophones')).toBeInTheDocument();
+    expect(screen.getByText('surdité partielle')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Aménagements' })).toBeInTheDocument();
+    expect(screen.getByText('lecteur d\'écran')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Difficultés d\'apprentissage' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Livre A' })).toHaveAttribute('href', '/o/LLLL2222');
+    expect(screen.queryByText('Projecteur C')).not.toBeInTheDocument();
+  });
+  it('dit qu\'il n\'y a rien quand aucun texte n\'a été saisi', async () => {
+    ctx.role = 'admin';
+    ctx.donnees.objets = [avec('C', 'Projecteur C', 'PPPP3333', {})];
+    monter(<AdminAutres />);
+    expect(await screen.findByText('Aucun texte « Autre » pour l\'instant.')).toBeInTheDocument();
+  });
+  it('est proposée comme onglet dans l\'administration', async () => {
+    ctx.role = 'admin';
+    monter(<Admin />);
+    expect(await screen.findByRole('tab', { name: 'Textes « Autre »' })).toBeInTheDocument();
   });
 });
 
