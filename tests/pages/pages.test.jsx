@@ -711,6 +711,84 @@ describe('Formulaire : fiche enrichie', () => {
   });
 });
 
+describe('Fiche : fiche enrichie', () => {
+  const CRITERES = [
+    { id: 'k1', famille: 'trouble', libelle: 'Dyslexie', aide: 'a', ordre: 1 },
+    { id: 'k2', famille: 'difficulte', libelle: 'Lecture', aide: 'b', ordre: 1 },
+  ];
+  const CATALOGUE = {
+    chapitres: [
+      { id: 'ch1', ordre: 1, titre: '1. SUPPORTS ET DOCUMENTS', est_dispositif: false },
+      { id: 'ch2', ordre: 2, titre: 'Dispositif de régulation', est_dispositif: true },
+    ],
+    amenagements: [
+      { id: 'am-old', chapitre_id: 'ch1', ordre: 9, libelle: 'Ancien aménagement', type: 'AR', actif: false },
+      { id: 'am-contrat', chapitre_id: 'ch2', ordre: 1, libelle: 'Contrat de comportement', type: 'AR', actif: true },
+    ],
+  };
+  const LIVRE = {
+    ...P, type_ressource: 'physique', auteur: 'Stanislas Dehaene', editeur: 'Odile Jacob', isbn: '9782738119742', description: 'Livre de référence.',
+    critere_ids: ['k1', 'k2'], chapitre_ids: ['ch2'], amenagement_ids: ['am-old'], autre_trouble: 'élèves allophones',
+  };
+  beforeEach(() => {
+    ctx.donnees.criteres = CRITERES;
+    ctx.donnees.catalogue = CATALOGUE;
+  });
+
+  it('montre notice, critères, chapitre, aménagement désactivé, « Autre » et la mention indicative', async () => {
+    ctx.donnees.objets = [LIVRE];
+    fiche('PPPP2222');
+    expect(await screen.findByText('Stanislas Dehaene')).toBeInTheDocument();
+    expect(screen.getByText('Odile Jacob')).toBeInTheDocument();
+    expect(screen.getByText('9782738119742')).toBeInTheDocument();
+    expect(screen.getByText('Livre de référence.')).toBeInTheDocument();
+    expect(await screen.findByText('Dyslexie')).toBeInTheDocument();
+    expect(screen.getByText('Lecture')).toBeInTheDocument();
+    expect(screen.getByText(/Dispositif de régulation/)).toBeInTheDocument();
+    expect(screen.getByText(/Ancien aménagement/)).toBeInTheDocument();
+    expect(screen.getByText(/désactivé dans AménagActif/)).toBeInTheDocument();
+    expect(screen.getByText('élèves allophones')).toBeInTheDocument();
+    expect(screen.getByText('Étiquettes indicatives posées par l\'équipe, pas une prescription.')).toBeInTheDocument();
+  });
+  it('un objet ancien, sans les nouveaux champs, s\'affiche sans erreur', async () => {
+    fiche('PPPP2222');
+    expect(await screen.findByText('Aucun critère posé.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Projecteur' })).toBeInTheDocument();
+  });
+  it('si les listes sont illisibles, ne prétend pas qu\'il n\'y a aucun critère', async () => {
+    ctx.donnees.catalogueErreur = true;
+    ctx.donnees.objets = [LIVRE];
+    fiche('PPPP2222');
+    expect(await screen.findByText(/liste indisponible/i)).toBeInTheDocument();
+    expect(screen.queryByText('Aucun critère posé.')).not.toBeInTheDocument();
+  });
+  it('un objet numérique n\'offre ni prêt, ni réservation, ni étiquette', async () => {
+    ctx.donnees.objets = [{ ...P, id: 'N', code: 'NNNN2222', nom: 'Site de calcul', type_ressource: 'numerique' }];
+    fiche('NNNN2222');
+    expect(await screen.findByRole('heading', { name: 'Site de calcul' })).toBeInTheDocument();
+    expect(screen.getByText('Modifier la fiche')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Emprunter pour moi' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Imprimer l'étiquette/)).not.toBeInTheDocument();
+  });
+  it('un objet physique garde l\'étiquette et le prêt (témoin)', async () => {
+    fiche('PPPP2222');
+    expect(await screen.findByText(/Imprimer l'étiquette/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Emprunter pour moi' })).toBeInTheDocument();
+  });
+  it('un enseignant voit les critères mais aucun lien de modification', async () => {
+    ctx.role = 'emprunteur';
+    ctx.donnees.objets = [LIVRE];
+    fiche('PPPP2222');
+    expect(await screen.findByText('Dyslexie')).toBeInTheDocument();
+    expect(screen.queryByText('Modifier la fiche')).not.toBeInTheDocument();
+  });
+  it('affiche l\'avertissement transmis après une création', async () => {
+    monter(<Routes><Route path="/o/:code" element={<FicheObjet />} /></Routes>,
+      { pathname: '/o/PPPP2222', state: { avertissement: 'Les critères sont à ajouter.' } });
+    expect(await screen.findByRole('alert')).toHaveTextContent('Les critères sont à ajouter.');
+  });
+});
+
 describe('Étiquettes : objets numériques', () => {
   it('ne propose pas un objet numérique', async () => {
     ctx.donnees.objets = [P, { ...base, id: 'N', nom: 'Site de lecture', code: 'NNNN2222', type_ressource: 'numerique' }];

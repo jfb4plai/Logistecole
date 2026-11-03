@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth.jsx';
 import { useOrg } from '../lib/org.jsx';
 import {
   getObjetParCode, modifierObjet, supprimerObjet, listerHistorique, ajouterEntreeHistorique, urlsPhotos,
 } from '../data/objets.js';
-import { useEmplacements, useObjets, usePrets, useReservations, useEmprunteurs } from '../data/hooks.js';
+import { useEmplacements, useObjets, usePrets, useReservations, useEmprunteurs, useCriteres, useCatalogueAmenagements } from '../data/hooks.js';
+import { organiserCatalogue } from '../domain/amenagements.js';
 import { libelleEvenement } from '../domain/historique.js';
 import { normaliserCode, formaterCode } from '../domain/codes.js';
 import { ETATS } from '../domain/etats.js';
@@ -23,6 +24,7 @@ import BlocPanne from '../components/fiche/BlocPanne.jsx';
 import BlocStock from '../components/fiche/BlocStock.jsx';
 import BlocAchat from '../components/fiche/BlocAchat.jsx';
 import BlocKit from '../components/fiche/BlocKit.jsx';
+import BlocPourQui from '../components/fiche/BlocPourQui.jsx';
 import BlocNfc from '../components/fiche/BlocNfc.jsx';
 
 export default function FicheObjet() {
@@ -33,6 +35,7 @@ export default function FicheObjet() {
   const { session } = useAuth();
   const { memberships, orgId, choisir } = useOrg();
   const userId = session?.user?.id;
+  const avertissement = useLocation().state?.avertissement;
 
   const objetQ = useQuery({ queryKey: ['objet', code], enabled: !!code, queryFn: () => getObjetParCode(code) });
   const objet = objetQ.data;
@@ -50,6 +53,9 @@ export default function FicheObjet() {
   const prets = usePrets(objOrg, { ouverts: true }).data ?? [];
   const reservations = useReservations(objOrg).data ?? [];
   const emprunteurs = useEmprunteurs(objOrg, peutEcrire(role)).data ?? [];
+  const critQ = useCriteres();
+  const catQ = useCatalogueAmenagements();
+  const catalogue = useMemo(() => organiserCatalogue(catQ.data ?? {}, { dejaChoisis: objet?.amenagement_ids ?? [] }), [catQ.data, objet]);
   const photoQ = useQuery({
     queryKey: ['photo', objet?.photo_path], enabled: !!objet?.photo_path,
     queryFn: async () => (await urlsPhotos([objet.photo_path]))[objet.photo_path],
@@ -94,10 +100,13 @@ export default function FicheObjet() {
   const estMonPret = !!pret && pret.logi_emprunteurs?.compte_id === userId;
   const actions = actionsFiche({ objet, role, prets, estMonPret });
   const ecrit = peutEcrire(role);
+  const numerique = objet.type_ressource === 'numerique';
+  const typeLibelle = { numerique: 'Numérique', les_deux: 'Physique et numérique' }[objet.type_ressource];
 
   return (
     <>
       <p><Link to="/">← Retour au matériel</Link></p>
+      {avertissement && <p className="plai-error" role="alert">{avertissement}</p>}
       <h1>{objet.nom}</h1>
       <p><EtatBadge etat={objet.etat} /> <span className="code-court">{formaterCode(objet.code)}</span></p>
       {photoQ.data && <img className="fiche-photo" src={photoQ.data} alt={`Photo : ${objet.nom}`} />}
@@ -105,17 +114,24 @@ export default function FicheObjet() {
       <section className="plai-card">
         <p><strong>Catégorie :</strong> {objet.logi_categories?.nom ?? 'Aucune'}</p>
         <p><strong>Emplacement :</strong> {cheminDe(emps, objet.emplacement_id) ?? objet.logi_emplacements?.nom ?? 'Aucun'}</p>
+        {typeLibelle && <p><strong>Type :</strong> <span>{typeLibelle}</span></p>}
+        {objet.auteur && <p><strong>Auteur :</strong> <span>{objet.auteur}</span></p>}
+        {objet.editeur && <p><strong>Éditeur :</strong> <span>{objet.editeur}</span></p>}
+        {objet.isbn && <p><strong>ISBN :</strong> <span className="code-court">{objet.isbn}</span></p>}
+        {objet.description && <p>{objet.description}</p>}
         {objet.notes && <p><strong>Notes :</strong> {objet.notes}</p>}
       </section>
 
+      <BlocPourQui objet={objet} criteres={critQ.data ?? []} catalogue={catalogue} />
+
       {erreur && <p className="plai-error" role="alert">{erreur}</p>}
 
-      {!objet.consommable && (
+      {!objet.consommable && !numerique && (
         <BlocPret objet={objet} objets={objets} prets={prets} actions={actions} emprunteurs={emprunteurs} orgId={objOrg} surChangement={rafraichir} />
       )}
-      <BlocStock objet={objet} actions={actions} surChangement={rafraichir} />
-      <BlocReservations objet={objet} reservations={reservations} actions={actions} role={role} userId={userId} emprunteurs={emprunteurs} surChangement={rafraichir} />
-      <BlocKit objet={objet} objets={objets} />
+      {!numerique && <BlocStock objet={objet} actions={actions} surChangement={rafraichir} />}
+      {!numerique && <BlocReservations objet={objet} reservations={reservations} actions={actions} role={role} userId={userId} emprunteurs={emprunteurs} surChangement={rafraichir} />}
+      {!numerique && <BlocKit objet={objet} objets={objets} />}
       <BlocAchat objet={objet} />
       <BlocPanne objet={objet} actions={actions} surChangement={rafraichir} />
 
@@ -124,7 +140,7 @@ export default function FicheObjet() {
           <h2>Gestion</h2>
           <div className="actions">
             <Link className="plai-btn btn-lien" to={`/o/${objet.code}/modifier`}>Modifier la fiche</Link>
-            <Link className="plai-btn-ghost btn-lien" to={`/etiquettes?codes=${objet.code}`}>Imprimer l'étiquette</Link>
+            {!numerique && <Link className="plai-btn-ghost btn-lien" to={`/etiquettes?codes=${objet.code}`}>Imprimer l'étiquette</Link>}
           </div>
 
           <ChampGuide id="deplacer" label="Déplacer vers" aide="Enregistre le nouvel emplacement et le garde dans l'historique. Les emplacements se créent dans l'administration.">
