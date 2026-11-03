@@ -62,6 +62,23 @@ Avec deux comptes : un administrateur, un enseignant (rôle « Enseignant »).
 11. Android Chrome : sur une fiche, « Écrire la puce » ; puis toucher la puce avec le téléphone d'un autre appareil : la fiche s'ouvre. iPhone XS ou plus récent : toucher la même puce : une notification apparaît, à toucher.
 12. Isolation : un compte de l'organisation A ne voit rien de l'organisation B.
 
+## 5 bis. Fiche enrichie : critères « Pour qui ? », type, ISBN (migration 20261019)
+
+Prérequis : migration `C:\Users\jfbeg\OneDrive\claude-workspace\logistecole\supabase\migrations\20261019_logistecole_fiche_enrichie.sql` appliquée sur la base (accord de JF). Sans elle, la liste du matériel ne se charge plus. Application : `npm run dev` dans `C:\Users\jfbeg\OneDrive\claude-workspace\logistecole`, puis `http://localhost:5180/` (vraie base). Pour un essai sans base : `npm run demo` puis `http://localhost:5181/?role=admin` (aucune donnée enregistrée).
+
+1. Ajouter un livre : nom « Les neurones de la lecture », ISBN `2-7381-1974-3`, auteur, éditeur. Attendu : la fiche montre l'ISBN `9782738119742`.
+2. ISBN `123`. Attendu : « L'ISBN n'est pas valide… » et rien n'est créé.
+3. « Pour qui ? » : cocher Dyslexie, la difficulté Lecture, le chapitre « 5. LECTURE » en entier, et deux aménagements précis d'un autre chapitre. Attendu : la fiche les affiche ; le chapitre entier grise ses détails ; la mention « Étiquettes indicatives posées par l'équipe, pas une prescription. » est visible.
+4. « Autre (préciser) » coché sans texte, puis Ajouter. Attendu : refus qui nomme la liste. Taper un texte puis décocher la case : rien n'est enregistré.
+5. Accueil : Filtres > Troubles > Dyslexie. Attendu : seuls les objets étiquetés Dyslexie. Ajouter la difficulté Calcul : ET entre familles, la liste se réduit. Cocher un chapitre entier : trouve aussi les objets liés à un aménagement précis de ce chapitre.
+6. Accueil : chercher `978-2-7381-1974-2`, puis le nom de l'auteur. Attendu : le livre apparaît.
+7. Objet numérique : type « Numérique », lien d'accès dans « Liens utiles ». Attendu : pas de champ quantité, pas de consommable ni de kit, pas de bouton de prêt ni d'étiquette ; l'accueil affiche « Numérique ».
+8. Dans AménagActif, désactiver un aménagement déjà lié à une fiche, rouvrir la fiche. Attendu : il reste affiché « désactivé dans AménagActif » et n'est plus proposé sur les autres fiches. Le réactiver ensuite.
+9. Couper le réseau, ouvrir « Modifier la fiche », enregistrer sans toucher aux critères. Attendu : message « Les listes n'ont pas pu être chargées » et aucun critère n'est effacé (vérifier après retour du réseau).
+10. Compte enseignant : la fiche montre les critères, aucun lien « Modifier la fiche ». Administration > « Textes « Autre » » : les textes saisis, par famille, avec lien vers la fiche.
+11. Téléphone : les listes à cocher s'ouvrent sur toute la largeur, chaque case se touche sans erreur (44 px), le texte reste lisible. Jamais essayé à ce jour.
+12. Import : CSV avec colonnes `auteur;éditeur;isbn;description;support`, une ligne à ISBN faux. Attendu : cette ligne est refusée avec son numéro, les autres s'importent.
+
 ## 6. Limites connues
 
 - Revue finale : le relecteur indépendant n'a pas pu s'exécuter (limite de crédits), la revue a été faite par l'auteur lui-même, ce qui est plus faible. Elle a produit 8 corrections (droits des fonctions de déclencheur, colonne `compte_id` protégée, verrou prêt/réservation, API d'invitation sans fuite d'existence de compte et `SITE_URL` obligatoire, taille et format du fichier d'import, heure belge dans l'historique, prêts ouverts seulement sur la fiche, pagination au-delà de 1000 lignes, élément de kit non rendu visible dans Suivi).

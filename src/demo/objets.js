@@ -11,9 +11,10 @@ export const supprimerObjet = async (id) => { objets.splice(objets.findIndex((o)
 export const ajouterEntreeHistorique = async ({ type, commentaire }) => {
   historique.unshift({ id: Date.now(), type, avant: null, apres: null, commentaire, quand: new Date().toISOString(), auteur_email: 'demo@ecole.be' });
 };
-export const creerObjets = async (_org, lot) => {
-  lot.forEach((l, i) => objets.push({ id: `n${Date.now()}${i}`, org_id: 'o1', etat: 'bon', logi_categories: { nom: '—' }, logi_emplacements: { nom: null }, liens: [], type_ressource: 'physique', critere_ids: [], chapitre_ids: [], amenagement_ids: [], ...l }));
-  return lot.map((l, i) => ({ objet_id: `n${i}`, objet_code: l.code }));
-};
+export const creerObjets = async (_org, lot) => lot.map((l, i) => {
+  const id = `n${Date.now()}${i}`;
+  objets.push({ id, org_id: 'o1', etat: 'bon', logi_categories: { nom: '—' }, logi_emplacements: { nom: null }, liens: [], type_ressource: 'physique', critere_ids: [], chapitre_ids: [], amenagement_ids: [], ...l });
+  return { objet_id: id, objet_code: l.code };
+});
 export const uploaderPhoto = async () => 'demo/photo.jpg';
 export const supprimerPhoto = async () => {};
