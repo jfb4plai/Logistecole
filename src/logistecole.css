@@ -118,3 +118,17 @@ fieldset.liste-cases { border: 1px solid var(--border); border-radius: var(--rad
 .journal .auteur { color: var(--text2); display: block; }
 
 .remarque-retour { flex: 1 1 100%; }
+
+/* Bloc « Pour qui ? » : listes à cocher, cibles de 44 px, texte de 16 px minimum */
+.liste-deroulante-bouton { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; cursor: pointer; background: var(--surface); }
+.liste-deroulante { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem .75rem; margin: 4px 0 12px; background: var(--surface); }
+.case-44 { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-height: 44px; font-size: 16px; }
+.case-44 input[type="checkbox"] { width: 24px; height: 24px; flex: none; }
+.case-44 label { flex: 1 1 200px; font-size: 16px; }
+.case-aide { flex: 1 1 100%; margin: 0 0 6px 34px; }
+.case-ligne { display: flex; flex-wrap: wrap; gap: 4px 24px; }
+.selecteur-amenagements { border: none; padding: 0; margin: 0 0 1rem; }
+.liste-chapitres, .liste-detail { list-style: none; padding: 0; margin: 0; }
+.chapitre-ligne { border-top: 1px solid var(--border); padding: 4px 0; }
+.liste-detail { margin: 0 0 8px 34px; }
+.etiquette { display: inline-block; font-size: 14px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--teal-border); }
