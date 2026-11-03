@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { listerObjets, urlsPhotos } from './objets.js';
 import { listerReferentiel } from './referentiels.js';
+import { listerCriteres, listerCatalogueAmenagements } from './criteres.js';
 import { listerPrets, listerReservations, listerEmprunteurs } from './prets.js';
 
 export const useObjets = (orgId) =>
@@ -31,3 +32,9 @@ export const useReservations = (orgId) =>
 
 export const useEmprunteurs = (orgId, enabled = true) =>
   useQuery({ queryKey: ['emprunteurs', orgId], enabled: !!orgId && enabled, queryFn: () => listerEmprunteurs(orgId) });
+
+export const useCriteres = () =>
+  useQuery({ queryKey: ['criteres'], staleTime: 30 * 60_000, queryFn: listerCriteres });
+
+export const useCatalogueAmenagements = () =>
+  useQuery({ queryKey: ['catalogue-amenagements'], staleTime: 5 * 60_000, queryFn: listerCatalogueAmenagements });

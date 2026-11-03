@@ -1,10 +1,14 @@
 import { supabase } from '../lib/supabase.js';
 import { lireToutesLesPages } from './pages.js';
+import { normaliserLiens } from '../domain/liensObjet.js';
 
 const COLONNES =
   'id, org_id, nom, code, etat, notes, photo_path, categorie_id, emplacement_id, cree_le, maj_le, '
   + 'date_achat, fournisseur, prix_achat, garantie_fin, numero_serie, facture_url, facture_photo_path, financement, liens, '
-  + 'parent_id, consommable, quantite, seuil_min, logi_categories(nom), logi_emplacements(nom)';
+  + 'parent_id, consommable, quantite, seuil_min, '
+  + 'type_ressource, auteur, editeur, isbn, description, description_a_relire, autre_trouble, autre_difficulte, autre_amenagement, '
+  + 'logi_objets_criteres(critere_id), logi_objets_amenagements(chapitre_id, amenagement_id), '
+  + 'logi_categories(nom), logi_emplacements(nom)';
 const BUCKET = 'logi-photos';
 
 function verifier(error) {
@@ -15,14 +19,14 @@ export async function listerObjets(orgId) {
   return lireToutesLesPages(async (de, a) => {
     const { data, error } = await supabase.from('logi_objets').select(COLONNES).eq('org_id', orgId).order('nom').order('id').range(de, a);
     verifier(error);
-    return data;
+    return data.map(normaliserLiens);
   });
 }
 
 export async function getObjetParCode(code) {
   const { data, error } = await supabase.from('logi_objets').select(COLONNES).eq('code', code).maybeSingle();
   verifier(error);
-  return data;
+  return data ? normaliserLiens(data) : data;
 }
 
 export async function creerObjets(orgId, objets) {

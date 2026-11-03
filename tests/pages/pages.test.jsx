@@ -27,6 +27,11 @@ vi.mock('../../src/data/objets.js', () => ({
   uploaderPhoto: vi.fn(async () => 'o1/x.jpg'),
   supprimerPhoto: vi.fn(async () => {}),
 }));
+vi.mock('../../src/data/criteres.js', () => ({
+  listerCriteres: vi.fn(async () => ctx.donnees.criteres ?? []),
+  listerCatalogueAmenagements: vi.fn(async () => ctx.donnees.catalogue ?? { chapitres: [], amenagements: [] }),
+  definirCriteres: vi.fn(async () => {}),
+}));
 vi.mock('../../src/data/prets.js', () => ({
   listerPrets: vi.fn(async (_o, opts) => ctx.donnees.prets.filter((p) => !opts?.ouverts || !p.retour_le)),
   listerReservations: async () => ctx.donnees.reservations ?? [],

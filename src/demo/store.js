@@ -5,7 +5,9 @@ const maintenant = (h = 0) => new Date(Date.now() + h * 3600000).toISOString();
 
 const base = { org_id: 'o1', etat: 'bon', parent_id: null, consommable: false, notes: null, photo_path: null, categorie_id: 'c1', emplacement_id: 'e1',
   liens: [], quantite: null, seuil_min: null, date_achat: null, fournisseur: null, prix_achat: null, garantie_fin: null, numero_serie: null,
-  facture_url: null, facture_photo_path: null, financement: null, cree_le: maintenant(-500), maj_le: maintenant(-5) };
+  facture_url: null, facture_photo_path: null, financement: null, cree_le: maintenant(-500), maj_le: maintenant(-5),
+  type_ressource: 'physique', auteur: null, editeur: null, isbn: null, description: null, description_a_relire: false,
+  autre_trouble: null, autre_difficulte: null, autre_amenagement: null, critere_ids: [], chapitre_ids: [], amenagement_ids: [] };
 
 export const categories = [
   { id: 'c1', nom: 'Tablettes et ordinateurs' }, { id: 'c2', nom: 'Matériel de sciences' }, { id: 'c3', nom: 'Matériel de sport' }, { id: 'c4', nom: 'Fournitures' },
@@ -25,6 +27,11 @@ export const objets = [
   { ...base, id: 'B', code: 'BBBB2222', nom: 'Ballons de basket (lot de 10)', categorie_id: 'c3', emplacement_id: 'e3' },
   { ...base, id: 'C', code: 'CCCC2222', nom: 'Piles AA', categorie_id: 'c4', consommable: true, quantite: 4, seuil_min: 6 },
   { ...base, id: 'G', code: 'GGGG2222', nom: 'Vieux globe terrestre', categorie_id: 'c2', etat: 'sorti' },
+  { ...base, id: 'L', code: 'LLLL2222', nom: 'Les neurones de la lecture', categorie_id: 'c4', auteur: 'Stanislas Dehaene', editeur: 'Odile Jacob', isbn: '9782738119742',
+    description: 'Livre de référence sur ce que le cerveau fait quand on lit.', critere_ids: ['k-dyslexie', 'k-lecture'], chapitre_ids: ['ch-lecture'], amenagement_ids: ['am-police'],
+    autre_trouble: "élèves allophones en début d'apprentissage du français" },
+  { ...base, id: 'N', code: 'NNNN2222', nom: "Site d'exercices de calcul mental", categorie_id: 'c4', emplacement_id: null, type_ressource: 'numerique',
+    description: 'Exercices en ligne, sans inscription.', liens: [{ titre: 'Accéder au site', url: 'https://exemple.be/calcul' }], critere_ids: ['k-dyscalculie', 'k-calcul'] },
 ].map((o) => ({ ...o, logi_categories: { nom: categories.find((c) => c.id === o.categorie_id)?.nom }, logi_emplacements: { nom: emplacements.find((e) => e.id === o.emplacement_id)?.nom } }));
 
 export const emprunteurs = [
@@ -55,3 +62,32 @@ export const membres = [
   { user_id: 'u3', email: 'prof.martin@ecole.be', role: 'emprunteur', cree_le: maintenant(-100) },
 ];
 export const jourFutur = jour;
+
+// Critères (liste de départ de la migration) et extrait du catalogue d'AménagActif.
+const critere = (famille, code, libelle, ordre) => ({
+  id: `k-${code}`, famille, code, libelle, ordre,
+  aide: `Utile à des élèves concernés par : ${['tdah', 'tsa'].includes(code) ? libelle : libelle.toLowerCase()}. Étiquette indicative.`,
+});
+export const criteres = [
+  critere('trouble', 'dyslexie', 'Dyslexie', 1), critere('trouble', 'dysorthographie', 'Dysorthographie', 2),
+  critere('trouble', 'dyscalculie', 'Dyscalculie', 3), critere('trouble', 'dyspraxie', 'Dyspraxie', 4),
+  critere('trouble', 'dysphasie', 'Dysphasie', 5), critere('trouble', 'tdah', 'TDAH', 6), critere('trouble', 'tsa', 'TSA', 7),
+  critere('difficulte', 'lecture', 'Lecture', 1), critere('difficulte', 'ecriture', 'Écriture', 2),
+  critere('difficulte', 'calcul', 'Calcul', 3), critere('difficulte', 'attention', 'Attention', 4),
+  critere('difficulte', 'memoire_travail', 'Mémoire de travail', 5), critere('difficulte', 'langage_oral', 'Langage oral', 6),
+];
+export const chapitresAr = [
+  { id: 'ch-supports', ordre: 1, titre: '1. SUPPORTS ET DOCUMENTS ÉCRITS, MISE EN PAGE & CONSIGNES', est_dispositif: false },
+  { id: 'ch-lecture', ordre: 5, titre: '5. LECTURE', est_dispositif: false },
+  { id: 'ch-dispositif', ordre: 13, titre: 'Dispositif de régulation des comportements', est_dispositif: true },
+];
+export const amenagementsAr = [
+  { id: 'am-police', chapitre_id: 'ch-supports', ordre: 1, libelle: 'Utiliser une police lisible (Arial 12 minimum)', type: 'AU', actif: true },
+  { id: 'am-aere', chapitre_id: 'ch-supports', ordre: 2, libelle: 'Aérer la mise en page et limiter le texte par page', type: 'AU', actif: true },
+  { id: 'am-temps', chapitre_id: 'ch-supports', ordre: 3, libelle: 'Accorder un temps supplémentaire', type: 'AR', actif: true },
+  { id: 'am-ancien', chapitre_id: 'ch-supports', ordre: 4, libelle: 'Ancien aménagement retiré du catalogue', type: 'AR', actif: false },
+  { id: 'am-lecteur', chapitre_id: 'ch-lecture', ordre: 1, libelle: 'Faire lire les consignes à voix haute', type: 'AR', actif: true },
+  { id: 'am-syllabes', chapitre_id: 'ch-lecture', ordre: 2, libelle: 'Colorer les syllabes', type: 'AR', actif: true },
+  { id: 'am-contrat', chapitre_id: 'ch-dispositif', ordre: 1, libelle: 'Contrat de comportement', type: 'AR', actif: true },
+  { id: 'am-pause', chapitre_id: 'ch-dispositif', ordre: 2, libelle: 'Coin de retour au calme', type: 'AR', actif: true },
+];
