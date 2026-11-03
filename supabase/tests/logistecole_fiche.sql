@@ -98,8 +98,8 @@ end $t$;
 
 -- ── Critères : liste de départ, droits ─────────────────────────────────
 insert into ar_chapitres (id, ordre, titre, est_dispositif) values
-  ('c1000000-0000-0000-0000-000000000001', 1, '1. SUPPORTS ET DOCUMENTS ÉCRITS', false),
-  ('c1000000-0000-0000-0000-000000000002', 2, 'Dispositif de régulation des comportements', true);
+  ('c1000000-0000-0000-0000-000000000001', 9001, '1. SUPPORTS ET DOCUMENTS ÉCRITS (test)', false),
+  ('c1000000-0000-0000-0000-000000000002', 9002, 'Dispositif de régulation des comportements (test)', true);
 insert into ar_amenagements (id, chapitre_id, ordre, libelle, type, actif) values
   ('e1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 1, 'Police lisible', 'AU', true),
   ('e1000000-0000-0000-0000-000000000002', 'c1000000-0000-0000-0000-000000000001', 2, 'Temps supplémentaire', 'AR', true),
