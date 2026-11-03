@@ -140,3 +140,44 @@ describe('analyserImport', () => {
     expect(r.objets.length).toBeGreaterThan(0);
   });
 });
+
+describe('colonnes de la fiche enrichie', () => {
+  const categories = [{ id: 'c1', nom: 'Livres' }];
+  const lire = (entetes, valeurs, quantite) => analyserImport(
+    [['nom', 'catégorie', ...(quantite ? ['quantité'] : []), ...entetes], ['Les neurones de la lecture', 'Livres', ...(quantite ? [quantite] : []), ...valeurs]],
+    { categories },
+  );
+
+  it('lit auteur, éditeur, ISBN (normalisé en 13 chiffres), description et support', () => {
+    const r = lire(['auteur', 'éditeur', 'ISBN', 'description', 'support'], ['Stanislas Dehaene', 'Odile Jacob', '2-7381-1974-3', 'Livre de référence.', 'Physique']);
+    expect(r.erreurs).toEqual([]);
+    expect(r.objets[0]).toMatchObject({
+      auteur: 'Stanislas Dehaene', editeur: 'Odile Jacob', isbn: '9782738119742', description: 'Livre de référence.', type_ressource: 'physique',
+    });
+  });
+  it('sans ces colonnes : physique, champs vides', () => {
+    const r = lire([], []);
+    expect(r.objets[0]).toMatchObject({ auteur: null, editeur: null, isbn: null, description: null, type_ressource: 'physique' });
+  });
+  it('comprend le support numérique et « les deux », vide = physique', () => {
+    expect(lire(['support'], ['Numérique']).objets[0].type_ressource).toBe('numerique');
+    expect(lire(['support'], ['les deux']).objets[0].type_ressource).toBe('les_deux');
+    expect(lire(['support'], ['']).objets[0].type_ressource).toBe('physique');
+  });
+  it('refuse un ISBN dont la clé est fausse, en donnant le numéro de ligne', () => {
+    const r = lire(['isbn'], ['9782738119743']);
+    expect(r.objets).toEqual([]);
+    expect(r.erreurs[0]).toMatchObject({ ligne: 2 });
+    expect(r.erreurs[0].message).toContain('ISBN');
+  });
+  it('refuse un support inconnu, une description trop longue et un auteur trop long', () => {
+    expect(lire(['support'], ['papier']).erreurs[0].message).toMatch(/support/i);
+    expect(lire(['description'], ['x'.repeat(2001)]).erreurs[0].message).toContain('2000');
+    expect(lire(['auteur'], ['x'.repeat(201)]).erreurs[0].message).toContain('200');
+  });
+  it('refuse plusieurs exemplaires d’un objet numérique', () => {
+    const r = lire(['support'], ['numérique'], '3');
+    expect(r.objets).toEqual([]);
+    expect(r.erreurs[0].message).toContain('numérique');
+  });
+});

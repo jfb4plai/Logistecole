@@ -1,13 +1,14 @@
 import { validerAchat } from './achat.js';
 import { analyserLiens } from './liens.js';
 import { dateIso } from './echeance.js';
+import { normaliserIsbn } from './isbn.js';
 
 export const MAX_LIGNES_IMPORT = 1000;
 
 export const MODELE_CSV = [
-  'nom;catégorie;emplacement;quantité;état;notes;date d\'achat;fournisseur;prix;garantie;numéro de série;financement;lien',
-  'Valise de 16 tablettes;Tablettes et ordinateurs;Salle 12;1;bon;Chariot de charge inclus;15/09/2026;Fournisseur X;4800,00;15/09/2028;;Budget du Pôle;https://exemple.be/notice',
-  'Projecteur;Projection et son;Armoire A;2;bon;;;;;;;;',
+  'nom;catégorie;emplacement;quantité;état;notes;date d\'achat;fournisseur;prix;garantie;numéro de série;financement;lien;auteur;éditeur;isbn;description;support',
+  'Valise de 16 tablettes;Tablettes et ordinateurs;Salle 12;1;bon;Chariot de charge inclus;15/09/2026;Fournisseur X;4800,00;15/09/2028;;Budget du Pôle;https://exemple.be/notice;;;;;physique',
+  'Projecteur;Projection et son;Armoire A;2;bon;;;;;;;;;;;;',
   '',
 ].join('\r\n');
 
@@ -27,7 +28,14 @@ const COLONNES = {
   numero_serie: ['numero de serie', 'n de serie', 'serie', 'numero serie', 'n serie'],
   financement: ['financement', 'origine', 'origine du financement'],
   lien: ['lien', 'liens', 'url', 'adresse', 'mode d emploi'],
+  auteur: ['auteur', 'auteurs'],
+  editeur: ['editeur', 'editeurs', 'maison d edition'],
+  isbn: ['isbn', 'isbn13', 'isbn 13', 'isbn10', 'isbn 10'],
+  description: ['description', 'resume', 'descriptif'],
+  support: ['support', 'physique ou numerique', 'type de ressource'],
 };
+
+const SUPPORTS = { physique: 'physique', numerique: 'numerique', 'les deux': 'les_deux', 'physique et numerique': 'les_deux' };
 
 const ETATS = { neuf: 'neuf', bon: 'bon', 'bon etat': 'bon', use: 'use', defectueux: 'defectueux', perdu: 'perdu' };
 
@@ -145,10 +153,28 @@ export function analyserImport(lignes, { categories = [], emplacements = [], cre
       erreursLigne.push(...r.erreurs);
     }
 
+    const auteur = String(get('auteur')).trim();
+    const editeur = String(get('editeur')).trim();
+    if (auteur.length > 200) erreursLigne.push('L\'auteur dépasse 200 caractères.');
+    if (editeur.length > 200) erreursLigne.push('L\'éditeur dépasse 200 caractères.');
+    const description = String(get('description')).trim();
+    if (description.length > 2000) erreursLigne.push('La description dépasse 2000 caractères.');
+    const isbnSaisi = String(get('isbn')).trim();
+    const isbn = isbnSaisi ? normaliserIsbn(isbnSaisi) : null;
+    if (isbnSaisi && !isbn) erreursLigne.push(`L'ISBN « ${isbnSaisi} » n'est pas valide (10 ou 13 chiffres, clé de contrôle correcte).`);
+    let typeRessource = 'physique';
+    const support = get('support');
+    if (!vide(support)) {
+      typeRessource = SUPPORTS[normaliserNom(support)];
+      if (!typeRessource) { erreursLigne.push(`Support « ${support} » inconnu (physique, numérique ou les deux).`); typeRessource = 'physique'; }
+    }
+    if (typeRessource === 'numerique' && quantite > 1) erreursLigne.push('Un objet numérique ne s\'importe qu\'en un seul exemplaire.');
+
     if (erreursLigne.length) { err(numero, erreursLigne.join(' ')); continue; }
     resultat.objets.push({
       nom, categorie, categorie_id: categorieId, emplacement, emplacement_id: emplacementId,
       quantite, etat, notes: String(get('notes')).trim() || null, ...achat.valeurs, liens,
+      auteur: auteur || null, editeur: editeur || null, isbn, description: description || null, type_ressource: typeRessource,
     });
   }
   resultat.categoriesManquantes = [...manqCat.values()];
