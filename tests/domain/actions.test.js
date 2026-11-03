@@ -41,4 +41,12 @@ describe('actionsFiche', () => {
     const a = actionsFiche({ objet: objet(), role: null, prets: [], estMonPret: false });
     expect(Object.values(a).every((v) => v === false)).toBe(true);
   });
+  it('un objet numérique ne se prête, ne se réserve et ne se signale pas, mais se modifie', () => {
+    const a = actionsFiche({ objet: objet({ type_ressource: 'numerique' }), role: 'gestionnaire', prets: [], estMonPret: false });
+    expect(a).toMatchObject({ emprunter: false, preter: false, rendre: false, prolonger: false, reserver: false, signaler: false, reparer: false, ajusterStock: false, ecrireNfc: false, modifier: true });
+  });
+  it('un objet « les deux » se prête comme un objet physique', () => {
+    const a = actionsFiche({ objet: objet({ type_ressource: 'les_deux' }), role: 'gestionnaire', prets: [], estMonPret: false });
+    expect(a).toMatchObject({ preter: true, emprunter: true, reserver: true });
+  });
 });

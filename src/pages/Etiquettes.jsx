@@ -24,7 +24,8 @@ export default function Etiquettes() {
     }
   }, [objetsQ.data, demandes]);
 
-  const visibles = filtrerObjets(objetsQ.data ?? [], { q });
+  // Un objet numérique n'a pas d'étiquette.
+  const visibles = filtrerObjets(objetsQ.data ?? [], { q }).filter((o) => o.type_ressource !== 'numerique');
   const basculer = (id) => setChoix((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   async function generer() {

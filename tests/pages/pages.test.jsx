@@ -66,6 +66,7 @@ import AdminMembres from '../../src/pages/AdminMembres.jsx';
 import Import from '../../src/pages/Import.jsx';
 import Nav from '../../src/components/Nav.jsx';
 import Journal from '../../src/pages/Journal.jsx';
+import Etiquettes from '../../src/pages/Etiquettes.jsx';
 import * as journalApi from '../../src/data/journal.js';
 
 const base = { org_id: 'o1', etat: 'bon', parent_id: null, consommable: false, notes: null, photo_path: null, categorie_id: 'c1', emplacement_id: 'e1',
@@ -541,5 +542,14 @@ describe('Administration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Importer 3 objets' }));
     await waitFor(() => expect(importerApi.executerImport).toHaveBeenCalled());
     expect(await screen.findByText(/3 objets importés/)).toBeInTheDocument();
+  });
+});
+
+describe('Étiquettes : objets numériques', () => {
+  it('ne propose pas un objet numérique', async () => {
+    ctx.donnees.objets = [P, { ...base, id: 'N', nom: 'Site de lecture', code: 'NNNN2222', type_ressource: 'numerique' }];
+    monter(<Etiquettes />, '/etiquettes');
+    expect(await screen.findByText('Projecteur')).toBeInTheDocument();
+    expect(screen.queryByText('Site de lecture')).not.toBeInTheDocument();
   });
 });
