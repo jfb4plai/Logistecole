@@ -711,6 +711,81 @@ describe('Formulaire : fiche enrichie', () => {
   });
 });
 
+describe('Accueil : recherche enrichie', () => {
+  const CRITERES = [
+    { id: 'k1', famille: 'trouble', libelle: 'Dyslexie', aide: 'a', ordre: 1 },
+    { id: 'k2', famille: 'difficulte', libelle: 'Lecture', aide: 'b', ordre: 1 },
+  ];
+  const CATALOGUE = {
+    chapitres: [{ id: 'ch1', ordre: 1, titre: '1. SUPPORTS ET DOCUMENTS', est_dispositif: false }],
+    amenagements: [{ id: 'am1', chapitre_id: 'ch1', ordre: 1, libelle: 'Police lisible', type: 'AU', actif: true }],
+  };
+  const meta = { critere_ids: [], chapitre_ids: [], amenagement_ids: [], type_ressource: 'physique' };
+  const LIVRE = { ...base, ...meta, id: 'LA', nom: 'Livre A', code: 'LLLL2222', isbn: '9782738119742', auteur: 'Stanislas Dehaene', critere_ids: ['k1', 'k2'], amenagement_ids: ['am1'] };
+  const SITE = { ...base, ...meta, id: 'SB', nom: 'Site B', code: 'SSSS2222', type_ressource: 'numerique', critere_ids: ['k1'], chapitre_ids: ['ch1'] };
+  const PROJO = { ...base, ...meta, id: 'PC', nom: 'Projecteur C', code: 'PPPP3333' };
+  const noms = () => screen.queryAllByRole('link').map((l) => l.textContent).join(' | ');
+
+  beforeEach(() => {
+    ctx.donnees.criteres = CRITERES;
+    ctx.donnees.catalogue = CATALOGUE;
+    ctx.donnees.objets = [LIVRE, SITE, PROJO];
+  });
+  const ouvrirFiltres = async () => {
+    await screen.findByText('Livre A');
+    fireEvent.click(screen.getByText(/^Filtres/));
+  };
+
+  it('filtre par type : le numérique est signalé dans la liste', async () => {
+    monter(<Accueil />);
+    await screen.findByText('Livre A');
+    fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'numerique' } });
+    expect(noms()).toContain('Site B');
+    expect(noms()).not.toContain('Livre A');
+    expect(noms()).not.toContain('Projecteur C');
+    expect(screen.getByText(/Numérique/, { selector: '.meta' })).toBeInTheDocument();
+  });
+  it('trouve par ISBN avec tirets et par auteur', async () => {
+    monter(<Accueil />);
+    await screen.findByText('Livre A');
+    fireEvent.change(screen.getByLabelText('Rechercher'), { target: { value: '978-2-7381-1974-2' } });
+    expect(noms()).toContain('Livre A');
+    expect(noms()).not.toContain('Site B');
+    fireEvent.change(screen.getByLabelText('Rechercher'), { target: { value: 'dehaene' } });
+    expect(noms()).toContain('Livre A');
+  });
+  it('filtre par trouble, puis combine trouble et difficulté en ET', async () => {
+    monter(<Accueil />);
+    await ouvrirFiltres();
+    fireEvent.click(await screen.findByRole('button', { name: /Troubles concernés/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Dyslexie' }));
+    expect(noms()).toContain('Livre A');
+    expect(noms()).toContain('Site B');
+    expect(noms()).not.toContain('Projecteur C');
+    fireEvent.click(screen.getByRole('button', { name: /Difficultés d'apprentissage/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Lecture' }));
+    expect(noms()).toContain('Livre A');
+    expect(noms()).not.toContain('Site B');
+  });
+  it('un chapitre trouve les objets liés au chapitre ou à un de ses détails', async () => {
+    monter(<Accueil />);
+    await ouvrirFiltres();
+    fireEvent.click(await screen.findByRole('checkbox', { name: /1\. SUPPORTS ET DOCUMENTS/ }));
+    expect(noms()).toContain('Livre A');
+    expect(noms()).toContain('Site B');
+    expect(noms()).not.toContain('Projecteur C');
+  });
+  it('si les listes sont illisibles, la recherche et la liste fonctionnent encore', async () => {
+    ctx.donnees.catalogueErreur = true;
+    monter(<Accueil />);
+    await ouvrirFiltres();
+    expect(await screen.findByText(/filtres par trouble, difficulté et aménagement ne sont pas disponibles/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Rechercher'), { target: { value: 'projecteur' } });
+    expect(noms()).toContain('Projecteur C');
+    expect(noms()).not.toContain('Livre A');
+  });
+});
+
 describe('Fiche : fiche enrichie', () => {
   const CRITERES = [
     { id: 'k1', famille: 'trouble', libelle: 'Dyslexie', aide: 'a', ordre: 1 },
