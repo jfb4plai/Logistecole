@@ -194,6 +194,11 @@ do $t$ begin
 end $t$;
 reset role;
 
+-- un lien d'aménagement porte un chapitre OU un aménagement, jamais les deux ni aucun
+select zz_echec($q$insert into logi_objets_amenagements (objet_id) values ('d0000000-0000-0000-0000-0000000000a1')$q$, array['23514']);
+select zz_echec($q$insert into logi_objets_amenagements (objet_id, chapitre_id, amenagement_id)
+  values ('d0000000-0000-0000-0000-0000000000a1', 'c1000000-0000-0000-0000-000000000002', 'e1000000-0000-0000-0000-000000000004')$q$, array['23514']);
+
 -- suppression dans AménagActif : la liaison disparaît
 delete from ar_amenagements where id = 'e1000000-0000-0000-0000-000000000003';
 do $t$ begin
@@ -204,6 +209,25 @@ end $t$;
 update logi_objets set autre_trouble = 'élèves allophones' where code = 'FFFF2222';
 do $t$ begin
   assert (select count(*) from logi_historique where commentaire = 'autre trouble') = 1, 'modification de « autre trouble » tracée';
+end $t$;
+
+-- ── Objet numérique : ni prêt, ni réservation, ni kit, ni consommable ──
+insert into logi_emprunteurs (id, org_id, type, libelle)
+  values ('f0000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'enseignant', 'M.D.');
+select zz_comme('a0000000-0000-0000-0000-000000000002');
+select zz_echec($q$select logi_preter((select id from logi_objets where code = 'HHHH2222'), 'f0000000-0000-0000-0000-000000000001', current_date + 7)$q$, array['23514'], 'numérique');
+select zz_echec($q$select logi_reserver((select id from logi_objets where code = 'HHHH2222'), now() + interval '1 day', now() + interval '2 days', 'f0000000-0000-0000-0000-000000000001')$q$, array['23514'], 'numérique');
+reset role;
+select zz_echec($q$insert into logi_prets (org_id, objet_id, emprunteur_id, echeance)
+  select org_id, id, 'f0000000-0000-0000-0000-000000000001', current_date + 7 from logi_objets where code = 'HHHH2222'$q$, array['23514'], 'numérique');
+select zz_echec($q$update logi_objets set parent_id = 'd0000000-0000-0000-0000-0000000000a1' where code = 'HHHH2222'$q$, array['23514'], 'logi_objets_numerique_simple');
+select zz_echec($q$update logi_objets set consommable = true, quantite = 1 where code = 'HHHH2222'$q$, array['23514'], 'logi_objets_numerique_simple');
+update logi_objets set type_ressource = 'les_deux' where code = 'JJJJ2222';
+select zz_comme('a0000000-0000-0000-0000-000000000002');
+select logi_preter((select id from logi_objets where code = 'JJJJ2222'), 'f0000000-0000-0000-0000-000000000001', current_date + 7);
+reset role;
+do $t$ begin
+  assert (select count(*) from logi_prets p join logi_objets o on o.id = p.objet_id where o.code = 'JJJJ2222') = 1, 'un objet « les deux » se prête';
 end $t$;
 
 -- FIN DES TESTS

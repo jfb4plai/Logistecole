@@ -197,6 +197,24 @@ end $$;
 create trigger logi_objets_trace_fiche after update on logi_objets
   for each row execute function logi_trace_fiche();
 
+-- ── Objet numérique : ni kit, ni consommable, ni prêt, ni réservation ──
+alter table logi_objets add constraint logi_objets_numerique_simple
+  check (type_ressource <> 'numerique' or (parent_id is null and consommable = false));
+
+create or replace function logi_refuser_numerique() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if exists (select 1 from logi_objets where id = new.objet_id and type_ressource = 'numerique') then
+    raise exception 'Un objet numérique ne se prête pas et ne se réserve pas' using errcode = '23514';
+  end if;
+  return new;
+end $$;
+
+create trigger logi_prets_refuser_numerique before insert on logi_prets
+  for each row execute function logi_refuser_numerique();
+create trigger logi_reservations_refuser_numerique before insert on logi_reservations
+  for each row execute function logi_refuser_numerique();
+
 -- ── Droits et RLS : lecture seule pour les utilisateurs, écriture par la fonction ──
 alter table logi_criteres enable row level security;
 alter table logi_objets_criteres enable row level security;
@@ -215,6 +233,7 @@ grant select, insert, update, delete on logi_criteres, logi_objets_criteres, log
 revoke all on function logi_org_de_objet(uuid) from public, anon;
 revoke all on function logi_definir_criteres(uuid, uuid[], uuid[], uuid[]) from public, anon;
 revoke all on function logi_trace_fiche() from public, anon, authenticated;
+revoke all on function logi_refuser_numerique() from public, anon, authenticated;
 grant execute on function logi_org_de_objet(uuid) to authenticated;
 grant execute on function logi_definir_criteres(uuid, uuid[], uuid[], uuid[]) to authenticated;
 
