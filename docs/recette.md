@@ -79,6 +79,19 @@ Prérequis : migration `C:\Users\jfbeg\OneDrive\claude-workspace\logistecole\sup
 11. Téléphone : les listes à cocher s'ouvrent sur toute la largeur, chaque case se touche sans erreur (44 px), le texte reste lisible. Jamais essayé à ce jour.
 12. Import : CSV avec colonnes `auteur;éditeur;isbn;description;support`, une ligne à ISBN faux. Attendu : cette ligne est refusée avec son numéro, les autres s'importent.
 
+## 5 ter. Mot de passe et connexion dans plusieurs onglets
+
+Application : `http://localhost:5180/` (vraie base). Ne pas oublier : le compte est commun à toutes les apps du projet Supabase.
+
+1. Connecté par lien e-mail en administrateur : menu **Mon compte**, choisir un mot de passe de 12 caractères ou plus (phrase courte), le confirmer. Attendu : « Mot de passe enregistré ». Un mot de passe de 11 caractères est refusé avant tout envoi.
+2. **Déconnexion**, puis page de connexion > onglet **Avec mon mot de passe** : adresse + mot de passe. Attendu : arrivée directe sur « Matériel », sans e-mail.
+3. Mot de passe faux. Attendu : « Adresse ou mot de passe incorrect… », sans dire lequel des deux est faux.
+4. Compte enseignant (jf.beguin@outlook.com) : pas de lien « Mon compte » dans le menu.
+5. Deux onglets Edge ouverts sur `http://localhost:5180/`, connectés. Se déconnecter dans l'onglet 1. Attendu : l'onglet 2 revient seul sur la page de connexion, sans recharger.
+6. Dans l'onglet 1, se reconnecter. Attendu : l'onglet 2 (resté sur la connexion) arrive seul sur « Matériel ».
+7. Se déconnecter, se reconnecter avec un AUTRE compte (enseignant). Attendu : aucune donnée de l'administrateur n'apparaît dans aucun onglet (le cache est vidé).
+8. Le choix « mot de passe » ou « lien » est retenu à la visite suivante.
+
 ## 6. Limites connues
 
 - Revue finale : le relecteur indépendant n'a pas pu s'exécuter (limite de crédits), la revue a été faite par l'auteur lui-même, ce qui est plus faible. Elle a produit 8 corrections (droits des fonctions de déclencheur, colonne `compte_id` protégée, verrou prêt/réservation, API d'invitation sans fuite d'existence de compte et `SITE_URL` obligatoire, taille et format du fichier d'import, heure belge dans l'historique, prêts ouverts seulement sur la fiche, pagination au-delà de 1000 lignes, élément de kit non rendu visible dans Suivi).

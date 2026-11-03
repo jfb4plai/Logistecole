@@ -30,6 +30,7 @@ export default function Nav() {
         {peutEcrire(role) && <NavLink to="/etiquettes">Étiquettes</NavLink>}
         {peutEcrire(role) && <NavLink to="/nouveau">Ajouter</NavLink>}
         {estAdmin(role) && <NavLink to="/admin">Administration</NavLink>}
+        {peutEcrire(role) && <NavLink to="/compte">Mon compte</NavLink>}
       </nav>
     </header>
   );

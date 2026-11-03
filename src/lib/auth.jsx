@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase.js';
 import { lireErreurLien } from '../domain/authurl.js';
+import { queryClient } from './queryClient.js';
 
 const AuthCtx = createContext(null);
 
@@ -14,12 +15,23 @@ export function AuthProvider({ children }) {
     return e;
   });
 
+  // Dernière personne vue dans cet onglet. Supabase prévient aussi des connexions et déconnexions faites dans les autres onglets.
+  const dernier = useRef(null);
+  const suivre = (s) => {
+    const id = s?.user?.id ?? null;
+    // Les données en mémoire sont celles de la personne précédente : on ne les montre jamais à une autre.
+    if (dernier.current && (id === null || id !== dernier.current)) queryClient.clear();
+    if (id) dernier.current = id;
+    setSession(s);
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user?.id) dernier.current = data.session.user.id;
       setSession(data.session);
       setReady(true);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => suivre(s));
     return () => sub.subscription.unsubscribe();
   }, []);
 

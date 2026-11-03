@@ -520,12 +520,21 @@ describe('Navigation', () => {
     ctx.role = 'emprunteur';
     monter(<Nav />);
     expect(screen.getByRole('link', { name: 'Mes emprunts' })).toBeInTheDocument();
-    for (const nom of ['Suivi', 'Journal', 'Ajouter', 'Administration', 'Étiquettes']) expect(screen.queryByRole('link', { name: nom })).not.toBeInTheDocument();
+    for (const nom of ['Suivi', 'Journal', 'Ajouter', 'Administration', 'Étiquettes', 'Mon compte']) expect(screen.queryByRole('link', { name: nom })).not.toBeInTheDocument();
   });
   it('un administrateur voit tout', () => {
     ctx.role = 'admin';
     monter(<Nav />);
-    for (const nom of ['Matériel', 'Scanner', 'Mes emprunts', 'Suivi', 'Journal', 'Étiquettes', 'Ajouter', 'Administration']) expect(screen.getByRole('link', { name: nom })).toBeInTheDocument();
+    for (const nom of ['Matériel', 'Scanner', 'Mes emprunts', 'Suivi', 'Journal', 'Étiquettes', 'Ajouter', 'Administration', 'Mon compte']) expect(screen.getByRole('link', { name: nom })).toBeInTheDocument();
+  });
+  it('un gestionnaire voit « Mon compte » (mot de passe), le rôle lecture non', () => {
+    ctx.role = 'gestionnaire';
+    const { unmount } = monter(<Nav />);
+    expect(screen.getByRole('link', { name: 'Mon compte' })).toBeInTheDocument();
+    unmount();
+    ctx.role = 'lecture';
+    monter(<Nav />);
+    expect(screen.queryByRole('link', { name: 'Mon compte' })).not.toBeInTheDocument();
   });
 });
 
