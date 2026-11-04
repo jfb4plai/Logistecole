@@ -27,7 +27,7 @@ export const objets = [
   { ...base, id: 'B', code: 'BBBB2222', nom: 'Ballons de basket (lot de 10)', categorie_id: 'c3', emplacement_id: 'e3' },
   { ...base, id: 'C', code: 'CCCC2222', nom: 'Piles AA', categorie_id: 'c4', consommable: true, quantite: 4, seuil_min: 6 },
   { ...base, id: 'G', code: 'GGGG2222', nom: 'Vieux globe terrestre', categorie_id: 'c2', etat: 'sorti' },
-  { ...base, id: 'L', code: 'LLLL2222', nom: 'Les neurones de la lecture', categorie_id: 'c4', auteur: 'Stanislas Dehaene', editeur: 'Odile Jacob', isbn: '9782738119742',
+  { ...base, id: 'L', code: 'RRRR2222', nom: 'Les neurones de la lecture', categorie_id: 'c4', auteur: 'Stanislas Dehaene', editeur: 'Odile Jacob', isbn: '9782738119742',
     description: 'Livre de référence sur ce que le cerveau fait quand on lit.', critere_ids: ['k-dyslexie', 'k-lecture'], chapitre_ids: ['ch-lecture'], amenagement_ids: ['am-police'],
     autre_trouble: "élèves allophones en début d'apprentissage du français" },
   { ...base, id: 'N', code: 'NNNN2222', nom: "Site d'exercices de calcul mental", categorie_id: 'c4', emplacement_id: null, type_ressource: 'numerique',
